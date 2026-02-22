@@ -46,6 +46,11 @@ public class VRPrototypeTestMode : MonoBehaviour
     private GUIStyle labelStyle;
     private Texture2D overlayBgTexture;
 
+    // ── Public API ───────────────────────────────────────────────────────────
+
+    /// <summary>Toggle the debug overlay on/off (callable from Quest2InputHandler).</summary>
+    public void ToggleOverlay() => overlayVisible = !overlayVisible;
+
     // ── Lifecycle ────────────────────────────────────────────────────────────
 
     private void Start()
@@ -182,8 +187,11 @@ public class VRPrototypeTestMode : MonoBehaviour
             labelStyle.normal.textColor = Color.white;
         }
 
-        float x = 10f, y = 10f, w = 320f, lineH = 20f;
-        int lines = 10;
+        float x = 10f, y = 10f, w = 360f, lineH = 20f;
+        // Line count: header(1) + hp(1) + sta(1) + sword(1) + enemies(1) + spacer(~0.2) +
+        //             desktop header(1) + desktop lines(2) + quest header(1) + quest lines(2) = 13
+        // Update this if you add or remove lines below.
+        int lines = 13;
 
         // Background
         GUIStyle bgStyle = new GUIStyle();
@@ -215,8 +223,12 @@ public class VRPrototypeTestMode : MonoBehaviour
 
         // ── Controls reminder ──
         y += 4f;
+        GUI.Label(new Rect(x + 4f, y, w, lineH), "── Desktop ──", labelStyle); y += lineH;
         GUI.Label(new Rect(x + 4f, y, w, lineH), "WASD/Arrows=move  Mouse=look  LMB=swing", labelStyle); y += lineH;
-        GUI.Label(new Rect(x + 4f, y, w, lineH), "E=grab  R=respawn  Tab=overlay  Esc=cursor", labelStyle);
+        GUI.Label(new Rect(x + 4f, y, w, lineH), "E=grab  R=respawn  Tab=overlay  Esc=cursor", labelStyle); y += lineH;
+        GUI.Label(new Rect(x + 4f, y, w, lineH), "── Quest 2 ──", labelStyle); y += lineH;
+        GUI.Label(new Rect(x + 4f, y, w, lineH), "R.Grip=grab  L.Grip=grab/2H  R.Trig=slash", labelStyle); y += lineH;
+        GUI.Label(new Rect(x + 4f, y, w, lineH), "L.Trig=block  A=overlay  B=respawn  Y=menu", labelStyle);
     }
 
     private void DrawBar(float x, float y, float w, float h,
