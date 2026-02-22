@@ -188,10 +188,10 @@ public class VRPrototypeTestMode : MonoBehaviour
         }
 
         float x = 10f, y = 10f, w = 360f, lineH = 20f;
-        // Line count: header(1) + hp(1) + sta(1) + sword(1) + enemies(1) + spacer(~0.2) +
-        //             desktop header(1) + desktop lines(2) + quest header(1) + quest lines(2) = 13
+        // Line count: header(1) + hp(1) + sta(1) + speed(1) + sword(1) + enemies(1) + spacer(~0.2) +
+        //             desktop header(1) + desktop lines(2) + quest header(1) + quest lines(2) = 14
         // Update this if you add or remove lines below.
-        int lines = 13;
+        int lines = 14;
 
         // Background
         GUIStyle bgStyle = new GUIStyle();
@@ -220,6 +220,18 @@ public class VRPrototypeTestMode : MonoBehaviour
 
         // ── Enemy count (cached) ──
         GUI.Label(new Rect(x + 4f, y, w, lineH), $"Enemies: {cachedEnemyCount}", labelStyle); y += lineH;
+
+        // ── Move speed bar ──
+        if (movementSystem != null)
+        {
+            // Normalise against the default max speed (6 m/s) so the bar shows swing intensity
+            const float kDisplayMaxSpeed = 6f;
+            float speedFraction = Mathf.Clamp01(movementSystem.SmoothedMoveSpeed / kDisplayMaxSpeed);
+            DrawBar(x + 4f, y, w - 8f, lineH - 4f,
+                speedFraction, $"SPD ({movementSystem.SmoothedMoveSpeed:F1}m/s)",
+                new Color(1f, 0.6f, 0.1f), Color.gray);
+            y += lineH;
+        }
 
         // ── Controls reminder ──
         y += 4f;
