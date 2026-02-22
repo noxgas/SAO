@@ -20,9 +20,13 @@ public class AIEnemy : MonoBehaviour
     [SerializeField] private float sightRange = 15f;
     [SerializeField] private float attackRange = 2f;
     [SerializeField] private float moveSpeed = 3f;
+    [SerializeField] private float attackDamage = 5f;
+    [Tooltip("Seconds between attacks. Prevents the enemy dealing damage every frame.")]
+    [SerializeField] private float attackInterval = 1f;
 
     private EnemyState currentState = EnemyState.Idle;
     private Player targetPlayer;
+    private float attackTimer;
 
     private void Update()
     {
@@ -32,6 +36,9 @@ public class AIEnemy : MonoBehaviour
 
     private void DetectPlayer()
     {
+        // Already dead – nothing to do
+        if (currentState == EnemyState.Dead) return;
+
         Collider[] colliders = Physics.OverlapSphere(transform.position, detectionRadius);
         foreach (var collider in colliders)
         {
@@ -39,15 +46,17 @@ public class AIEnemy : MonoBehaviour
             if (player != null && HasLineOfSight(player.transform))
             {
                 targetPlayer = player;
-                currentState = EnemyState.Alerted;
+                // Only transition to Alerted/Chase from idle/patrol states.
+                // Do NOT override Chase or Combat – let UpdateAI handle those.
+                if (currentState == EnemyState.Idle || currentState == EnemyState.Patrol)
+                    currentState = EnemyState.Chase;
                 return;
             }
         }
 
+        // No player detected this frame: return to patrol if we haven't locked onto anyone yet
         if (targetPlayer == null)
             currentState = EnemyState.Patrol;
-        else if (currentState == EnemyState.Alerted)
-            currentState = EnemyState.Chase;
     }
 
     private bool HasLineOfSight(Transform target)
@@ -103,9 +112,22 @@ public class AIEnemy : MonoBehaviour
             return;
         }
 
+        // Return to chase if player has moved out of attack range
+        float distanceToPlayer = Vector3.Distance(transform.position, targetPlayer.transform.position);
+        if (distanceToPlayer > attackRange)
+        {
+            currentState = EnemyState.Chase;
+            return;
+        }
+
+        // Attack cooldown – prevents dealing damage every frame
+        attackTimer -= Time.deltaTime;
+        if (attackTimer > 0f) return;
+
+        attackTimer = attackInterval;
         PlayerCombat combat = targetPlayer.GetComponent<PlayerCombat>();
         if (combat != null)
-            combat.TakeDamage(5f);
+            combat.TakeDamage(attackDamage);
     }
 
     public void TakeDamage(float damage)

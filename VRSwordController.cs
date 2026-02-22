@@ -72,8 +72,13 @@ public class VRSwordController : MonoBehaviour
         primaryGrip = null;
         transform.SetParent(null);
         rb.isKinematic = false;
-        // Inherit the swing velocity so the sword flies naturally
+        // Inherit the swing velocity so the sword flies naturally.
+        // Unity 6+ renamed velocity to linearVelocity; fall back to the older API on 2021/2022.
+#if UNITY_6000_0_OR_NEWER
         rb.linearVelocity = swingSpeed * transform.forward;
+#else
+        rb.velocity = swingSpeed * transform.forward;
+#endif
     }
 
     /// <summary>
