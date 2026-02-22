@@ -30,6 +30,13 @@ public class VRSwordController : MonoBehaviour
     [Header("VFX / Audio (optional)")]
     [SerializeField] private TrailRenderer swingTrail;
 
+    [Header("Desktop Test Mode")]
+    [Tooltip("Press the swing key to simulate a sword swing without a VR headset.")]
+    [SerializeField] private bool desktopTestMode = false;
+    [SerializeField] private KeyCode desktopSwingKey = KeyCode.Mouse0;
+    [Tooltip("Simulated swing speed used when the swing key is pressed.")]
+    [SerializeField] private float desktopSimulatedSwingSpeed = 3f;
+
     // Runtime state
     private Rigidbody rb;
     private Vector3 prevPosition;
@@ -93,8 +100,12 @@ public class VRSwordController : MonoBehaviour
         if (cooldownTimer > 0f)
             cooldownTimer -= Time.deltaTime;
 
-        // Measure swing speed
-        swingSpeed = (transform.position - prevPosition).magnitude / Time.deltaTime;
+        // Measure swing speed (VR: position delta; Desktop: key-triggered simulation)
+        if (desktopTestMode && Input.GetKey(desktopSwingKey))
+            swingSpeed = desktopSimulatedSwingSpeed;
+        else
+            swingSpeed = (transform.position - prevPosition).magnitude / Time.deltaTime;
+
         prevPosition = transform.position;
 
         bool activeSwing = isHeld && swingSpeed >= swingDamageThreshold;

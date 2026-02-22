@@ -22,10 +22,17 @@ public class VRMovementSystem : MonoBehaviour
     [SerializeField] private float bodyRotationSpeed = 8f;
     [SerializeField] private float gravity = -9.81f;
 
+    [Header("Desktop Test Mode")]
+    [Tooltip("Enable keyboard (WASD) + mouse movement when no VR headset is present.")]
+    [SerializeField] private bool desktopTestMode = false;
+    [SerializeField] private float desktopMoveSpeed = 5f;
+    [SerializeField] private float desktopMouseSensitivity = 2f;
+
     // Internal state
     private Vector3 leftHandPrevPos;
     private Vector3 rightHandPrevPos;
     private float verticalVelocity;
+    private float desktopYaw;   // accumulated horizontal mouse look (desktop only)
 
     private void Start()
     {
@@ -45,9 +52,49 @@ public class VRMovementSystem : MonoBehaviour
     {
         if (characterController == null) return;
 
+        if (desktopTestMode)
+        {
+            UpdateDesktop();
+            return;
+        }
+
+        if (leftHandTransform == null && rightHandTransform == null)
+        {
+            Debug.LogWarning("[VRMovementSystem] No hand transforms assigned and desktopTestMode is off. " +
+                             "Enable desktopTestMode or assign hand transforms in the Inspector.");
+            return;
+        }
+
+        UpdateVR();
+    }
+
+    private void UpdateDesktop()
+    {
         float deltaTime = Time.deltaTime;
 
-        // --- Compute per-hand velocities ---
+        // Mouse look – horizontal only so the head camera stays independent
+        desktopYaw += Input.GetAxis("Mouse X") * desktopMouseSensitivity;
+        transform.rotation = Quaternion.Euler(0f, desktopYaw, 0f);
+
+        // WASD movement in the direction the body is facing
+        float h = Input.GetAxisRaw("Horizontal");
+        float v = Input.GetAxisRaw("Vertical");
+        Vector3 moveDir = (transform.forward * v + transform.right * h).normalized;
+        Vector3 horizontalMotion = moveDir * desktopMoveSpeed;
+
+        // Gravity
+        if (characterController.isGrounded)
+            verticalVelocity = -0.5f;
+        else
+            verticalVelocity += gravity * deltaTime;
+
+        characterController.Move((horizontalMotion + Vector3.up * verticalVelocity) * deltaTime);
+    }
+
+    private void UpdateVR()
+    {
+        float deltaTime = Time.deltaTime;
+
         Vector3 leftHandVelocity = Vector3.zero;
         Vector3 rightHandVelocity = Vector3.zero;
 
