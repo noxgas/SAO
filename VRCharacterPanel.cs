@@ -1,36 +1,38 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-public class VRCharacterPanel : VRMenuPanel
+/// <summary>
+/// VR Character panel showing player stats and class info.
+/// </summary>
+public class VRCharacterPanel : VRUIPanel
 {
     [Header("Character Info")]
     [SerializeField] private TextMeshProUGUI characterNameText;
     [SerializeField] private TextMeshProUGUI classText;
     [SerializeField] private TextMeshProUGUI levelText;
-    [SerializeField] private TextMeshProUGUI experienceText;
 
     [Header("Stats")]
     [SerializeField] private TextMeshProUGUI statsText;
+
+    [Header("Navigation")]
+    [SerializeField] private VRButton backButton;
 
     [Header("Title")]
     [SerializeField] private TextMeshProUGUI titleText;
 
     private Player currentPlayer;
 
-    protected override void Awake()
+    private void Start()
     {
-        base.Awake();
-        panelWidth = 800f;
-        panelHeight = 900f;
+        titleText.text = "👤 CHARACTER 👤";
+        titleText.color = VRUIManager.Instance.GetAccentColor(AccentType.Green);
+        
+        backButton.OnClicked += OnBackClicked;
     }
 
-    public override void Show()
+    protected override void OnShow()
     {
-        base.Show();
-        titleText.text = "👤 CHARACTER 👤";
-        titleText.color = VRMenuSystem.Instance.GetAccentColor(AccentType.Green);
-
         currentPlayer = FindObjectOfType<Player>();
         UpdateCharacterInfo();
     }
@@ -42,8 +44,8 @@ public class VRCharacterPanel : VRMenuPanel
         characterNameText.text = currentPlayer.name;
         classText.text = $"Class: {currentPlayer.CharacterClass.ClassName}";
         levelText.text = $"Level: {currentPlayer.Level}";
-        experienceText.text = $"EXP: {currentPlayer.Experience}";
 
+        // Get stats
         CharacterStats stats = currentPlayer.CharacterClass.BaseStats;
         statsText.text = $"╔════════════════════════╗\n" +
                         $"║ HP:        {stats.MaxHealth,8:F0} ║\n" +
@@ -54,5 +56,10 @@ public class VRCharacterPanel : VRMenuPanel
                         $"║ Crit:      {(stats.CritChance * 100),7:F1}% ║\n" +
                         $"║ Move Spd:  {stats.MoveSpeed,8:F1} ║\n" +
                         $"╚════════════════════════╝";
+    }
+
+    private void OnBackClicked()
+    {
+        Hide();
     }
 }

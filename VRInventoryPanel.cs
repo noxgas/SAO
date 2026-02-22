@@ -1,8 +1,14 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using System.Collections.Generic;
 
+/// <summary>
+/// Inventory panel - displays items with categories.
+/// Left: Category tabs
+/// Center: Item grid (5xN layout)
+/// Right: Item details
+/// </summary>
 public class VRInventoryPanel : VRMenuPanel
 {
     [Header("Category Tabs")]
@@ -22,11 +28,13 @@ public class VRInventoryPanel : VRMenuPanel
     [SerializeField] private TextMeshProUGUI descriptionText;
     [SerializeField] private TextMeshProUGUI sellValueText;
 
-    [Header("Title")]
-    [SerializeField] private TextMeshProUGUI titleText;
+    [Header("Action Buttons")]
+    [SerializeField] private Transform actionButtonsContainer;
+    [SerializeField] private VRMenuButton actionButtonPrefab;
 
     private Equipment playerEquipment;
     private Equipment.EquipmentItem selectedItem;
+    private string currentCategory = "Weapons";
 
     private string[] categories = new string[]
     {
@@ -48,19 +56,11 @@ public class VRInventoryPanel : VRMenuPanel
     public override void Initialize(VRMenuSystem system, string type, Vector3 offset)
     {
         base.Initialize(system, type, offset);
-
+        
         Player player = system.GetCurrentPlayer();
         playerEquipment = player.GetComponent<Equipment>();
 
         CreateCategoryTabs();
-        RefreshInventory();
-    }
-
-    public override void Show()
-    {
-        base.Show();
-        titleText.text = "🎒 INVENTORY 🎒";
-        titleText.color = VRMenuSystem.Instance.GetAccentColor(AccentType.Blue);
         RefreshInventory();
     }
 
@@ -70,16 +70,19 @@ public class VRInventoryPanel : VRMenuPanel
         {
             VRMenuButton tab = Instantiate(categoryTabPrefab, categoryTabsContainer);
             tab.Initialize(category, null);
+            // Add click listener to filter inventory
         }
     }
 
     private void RefreshInventory()
     {
+        // Clear existing items
         foreach (Transform child in itemGridContainer)
         {
             Destroy(child.gameObject);
         }
 
+        // Add items from current category
         var inventory = playerEquipment.GetInventory();
         for (int i = 0; i < inventory.Count; i++)
         {
@@ -91,6 +94,8 @@ public class VRInventoryPanel : VRMenuPanel
     public void OnItemSelected(Equipment.EquipmentItem item)
     {
         selectedItem = item;
+
+        // Update details panel
         itemNameText.text = item.itemName;
         rarityText.text = $"Rarity: {item.rarity}";
         rarityText.color = GetRarityColor(item.rarity);
@@ -99,7 +104,7 @@ public class VRInventoryPanel : VRMenuPanel
         sellValueText.text = $"Sell Value: {item.damage * 100} Col";
     }
 
-    public Color GetRarityColor(ItemRarity rarity)
+    private Color GetRarityColor(ItemRarity rarity)
     {
         return rarity switch
         {

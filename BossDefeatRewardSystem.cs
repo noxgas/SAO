@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections.Generic;
 
 /// <summary>
@@ -15,7 +15,7 @@ public class BossDefeatRewardSystem : MonoBehaviour
     public class DefeatReward
     {
         public Player defeatingPlayer;
-        public RewardType rewardType;
+        public RewardType rewardType; // Who gets what
         public List<BossDrop> earnedLoot = new List<BossDrop>();
         public int goldEarned;
         public int experienceEarned;
@@ -23,9 +23,9 @@ public class BossDefeatRewardSystem : MonoBehaviour
 
     public enum RewardType
     {
-        GuildMember,
-        PartyMember,
-        FinalHitKiller
+        GuildMember,      // All guild members
+        PartyMember,      // Top damage dealers
+        FinalHitKiller    // The killing blow player
     }
 
     private static BossDefeatRewardSystem instance;
@@ -40,17 +40,20 @@ public class BossDefeatRewardSystem : MonoBehaviour
         else
             Destroy(gameObject);
 
-        DontDestroyOnLoad(gameObject);
         InitializeBossLootTables();
     }
 
     public static BossDefeatRewardSystem Instance => instance;
 
+    /// <summary>
+    /// Initialize all boss loot tables for each floor.
+    /// </summary>
     private void InitializeBossLootTables()
     {
         // Floor 1 Boss - Goblin King
         BossLootTable floor1Boss = new BossLootTable("goblin_king", "Goblin King", 1);
-
+        
+        // GUARANTEED DROPS - Everyone gets (even non-guild players)
         floor1Boss.AddGuaranteedDrop(new BossDrop
         {
             dropId = "goblin_king_trophy",
@@ -65,6 +68,7 @@ public class BossDefeatRewardSystem : MonoBehaviour
             isBoundToCharacter = false
         });
 
+        // GUILD BASE DROPS - All guild members get these
         floor1Boss.AddGuildBaseDrop(new BossDrop
         {
             dropId = "goblin_gold_coin",
@@ -78,6 +82,7 @@ public class BossDefeatRewardSystem : MonoBehaviour
             isBoundToCharacter = false
         });
 
+        // FINAL HIT DROP - Only the player who gets the killing blow
         floor1Boss.SetFinalHitDrop(new BossDrop
         {
             dropId = "goblin_king_crown",
@@ -92,6 +97,7 @@ public class BossDefeatRewardSystem : MonoBehaviour
             isBoundToCharacter = true
         });
 
+        // PARTY EXCLUSIVE DROPS - Top 4 damage dealers get 1-2 of these
         floor1Boss.AddRandomPartyDrop(new BossDrop
         {
             dropId = "iron_great_sword",
@@ -103,30 +109,28 @@ public class BossDefeatRewardSystem : MonoBehaviour
             dropChance = 0.6f,
             experienceReward = 300,
             goldReward = 200,
-            isBoundToCharacter = false
+            isDualWieldCompatible = false
         });
 
         floor1Boss.AddRandomPartyDrop(new BossDrop
         {
-            dropId = "twin_iron_blades_boss",
+            dropId = "twin_iron_blades",
             dropName = "Twin Iron Blades",
-            description = "A pair of perfectly matched iron swords. Can only be obtained from boss drops. DUAL WIELD CAPABLE!",
+            description = "Matching pair for dual wielding - party exclusive",
             rewardType = BossRewardType.Weapon,
-            rarity = ItemRarity.Rare,
-            statBonus = 14f,
-            dropChance = 0.005f,
-            experienceReward = 500,
-            goldReward = 200,
-            isBoundToCharacter = true,
-            isDualWieldCapable = true,
-            bossThatDropsIt = "goblin_king"
+            rarity = ItemRarity.Uncommon,
+            statBonus = 12f,
+            dropChance = 0.4f,
+            experienceReward = 300,
+            goldReward = 150,
+            isDualWieldCompatible = true
         });
 
         bossLootTables["goblin_king"] = floor1Boss;
 
         // Floor 5 Boss - Frost Dragon
         BossLootTable floor5Boss = new BossLootTable("frost_dragon", "Frost Dragon", 5);
-
+        
         floor5Boss.AddGuaranteedDrop(new BossDrop
         {
             dropId = "frost_shard",
@@ -180,30 +184,14 @@ public class BossDefeatRewardSystem : MonoBehaviour
             dropChance = 0.5f,
             experienceReward = 800,
             goldReward = 400,
-            isBoundToCharacter = false
-        });
-
-        floor5Boss.AddRandomPartyDrop(new BossDrop
-        {
-            dropId = "frost_edge_twin_boss",
-            dropName = "Twin Frost Edges",
-            description = "Twin blades infused with eternal ice. Boss-exclusive. DUAL WIELD CAPABLE!",
-            rewardType = BossRewardType.Weapon,
-            rarity = ItemRarity.Epic,
-            statBonus = 20f,
-            dropChance = 0.008f,
-            experienceReward = 1000,
-            goldReward = 500,
-            isBoundToCharacter = true,
-            isDualWieldCapable = true,
-            bossThatDropsIt = "frost_dragon"
+            isDualWieldCompatible = true
         });
 
         bossLootTables["frost_dragon"] = floor5Boss;
 
         // Floor 10 Boss - Shadow Monarch
         BossLootTable floor10Boss = new BossLootTable("shadow_monarch", "Shadow Monarch", 10);
-
+        
         floor10Boss.AddGuaranteedDrop(new BossDrop
         {
             dropId = "shadow_essence",
@@ -257,30 +245,30 @@ public class BossDefeatRewardSystem : MonoBehaviour
             dropChance = 0.4f,
             experienceReward = 1200,
             goldReward = 600,
-            isBoundToCharacter = false
+            isDualWieldCompatible = true
         });
 
         floor10Boss.AddRandomPartyDrop(new BossDrop
         {
-            dropId = "shadow_twin_blades_boss",
-            dropName = "Twin Shadow Blades",
-            description = "Legendary blades forged from pure shadow. Ultra-rare boss exclusive. DUAL WIELD CAPABLE!",
-            rewardType = BossRewardType.Weapon,
-            rarity = ItemRarity.Legendary,
-            statBonus = 26f,
-            dropChance = 0.01f,
-            experienceReward = 2000,
-            goldReward = 1000,
-            isBoundToCharacter = true,
-            isDualWieldCapable = true,
-            bossThatDropsIt = "shadow_monarch"
+            dropId = "void_essence_scroll",
+            dropName = "Void Essence Skill Scroll",
+            description = "Unlocks a powerful shadow skill - party exclusive",
+            rewardType = BossRewardType.SkillScroll,
+            rarity = ItemRarity.Epic,
+            dropChance = 0.25f,
+            experienceReward = 1500,
+            goldReward = 400,
+            isBoundToCharacter = false
         });
 
         bossLootTables["shadow_monarch"] = floor10Boss;
     }
 
+    /// <summary>
+    /// Process boss defeat and distribute rewards to guild and party.
+    /// </summary>
     public List<DefeatReward> ProcessBossDefeat(
-        string bossId,
+        string bossId, 
         Player finalHitPlayer,
         List<Player> partyMembers,
         Guild defeatersGuild)
@@ -293,6 +281,7 @@ public class BossDefeatRewardSystem : MonoBehaviour
 
         List<DefeatReward> rewards = new List<DefeatReward>();
 
+        // ===== REWARD ALL GUILD MEMBERS =====
         if (defeatersGuild != null)
         {
             foreach (var guildMember in defeatersGuild.members)
@@ -305,7 +294,10 @@ public class BossDefeatRewardSystem : MonoBehaviour
                     experienceEarned = lootTable.GuildBaseExperienceReward
                 };
 
+                // Add guaranteed drops (everyone gets)
                 guildReward.earnedLoot.AddRange(lootTable.GetGuaranteedDrops());
+
+                // Add guild base drops (all guild members get)
                 guildReward.earnedLoot.AddRange(lootTable.GetGuildBaseDrops());
 
                 rewards.Add(guildReward);
@@ -315,12 +307,14 @@ public class BossDefeatRewardSystem : MonoBehaviour
             }
         }
 
+        // ===== REWARD PARTY MEMBERS (Top Damage Dealers) =====
         List<BossDrop> partyDrops = RollRandomDrops(lootTable.GetRandomPartyDrops());
 
         for (int i = 0; i < partyMembers.Count; i++)
         {
             Player partyMember = partyMembers[i];
 
+            // Skip if this is the final hit player (they get special rewards)
             if (partyMember == finalHitPlayer)
                 continue;
 
@@ -332,6 +326,7 @@ public class BossDefeatRewardSystem : MonoBehaviour
                 experienceEarned = lootTable.PartyMemberExperienceReward
             };
 
+            // Add party exclusive drops
             if (i < partyDrops.Count)
             {
                 partyReward.earnedLoot.Add(partyDrops[i]);
@@ -343,6 +338,7 @@ public class BossDefeatRewardSystem : MonoBehaviour
             Debug.Log($"[PARTY REWARD] {partyMember.name} received: {partyReward.goldEarned} Gold, {partyReward.experienceEarned} XP");
         }
 
+        // ===== REWARD FINAL HIT PLAYER (THE KILLING BLOW) =====
         DefeatReward finalHitReward = new DefeatReward
         {
             defeatingPlayer = finalHitPlayer,
@@ -351,11 +347,13 @@ public class BossDefeatRewardSystem : MonoBehaviour
             experienceEarned = lootTable.FinalHitBonusExperience
         };
 
+        // Add the special final hit drop
         if (lootTable.GetFinalHitDrop() != null)
         {
             finalHitReward.earnedLoot.Add(lootTable.GetFinalHitDrop());
         }
 
+        // Also add a party drop if available
         if (partyDrops.Count > 0)
         {
             finalHitReward.earnedLoot.Add(partyDrops[0]);
@@ -371,6 +369,9 @@ public class BossDefeatRewardSystem : MonoBehaviour
         return rewards;
     }
 
+    /// <summary>
+    /// Roll for random drops based on drop chance.
+    /// </summary>
     private List<BossDrop> RollRandomDrops(List<BossDrop> possibleDrops)
     {
         List<BossDrop> rolledDrops = new List<BossDrop>();
@@ -383,13 +384,19 @@ public class BossDefeatRewardSystem : MonoBehaviour
             }
         }
 
+        // Limit to 2 random drops
         return rolledDrops.Count > 2 ? rolledDrops.GetRange(0, 2) : rolledDrops;
     }
 
+    /// <summary>
+    /// Apply the defeat rewards to a player.
+    /// </summary>
     private void ApplyRewardToPlayer(Player player, DefeatReward reward)
     {
+        // Award experience
         player.GainExperience(reward.experienceEarned);
 
+        // Add loot to inventory
         Equipment equipment = player.GetComponent<Equipment>();
         if (equipment != null)
         {
@@ -400,6 +407,9 @@ public class BossDefeatRewardSystem : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Add a boss drop to player's inventory.
+    /// </summary>
     private void AddBossDropToInventory(Player player, BossDrop drop)
     {
         Equipment equipment = player.GetComponent<Equipment>();
@@ -409,20 +419,11 @@ public class BossDefeatRewardSystem : MonoBehaviour
         {
             itemId = drop.dropId,
             itemName = drop.dropName,
-            description = drop.description,
-            rarity = drop.rarity,
-            damage = drop.statBonus,
-            isDualWieldSword = drop.isDualWieldCapable
+            rarity = drop.rarity
         };
 
         equipment.AddItemToInventory(item);
         Debug.Log($"✓ Added {drop.dropName} ({drop.rarity}) to {player.name}'s inventory");
-
-        if (drop.isDualWieldCapable)
-        {
-            Debug.Log($"⚡ ULTRA-RARE DUAL WIELD WEAPON DROPPED!");
-            DualWieldWeaponDetector.CheckAndEnableDualWield(player, drop);
-        }
     }
 
     public BossLootTable GetBossLootTable(string bossId)

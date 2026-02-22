@@ -42,7 +42,6 @@ public class VRMainMenuPanel : VRMenuPanel
         "Inventory",
         "Equipment",
         "Skills",
-        "Skill Tree",
         "Map",
         "Party",
         "Guild",
@@ -91,7 +90,7 @@ public class VRMainMenuPanel : VRMenuPanel
         // Update character info
         playerNameText.text = currentPlayer.name;
         levelText.text = $"Lvl {currentPlayer.Level}";
-        floorText.text = $"Floor: {WorldManager.Instance.GetCurrentFloor()}";
+        floorText.text = $"Floor: 1"; // TODO: Get from world manager
         colText.text = $"Col: 0"; // TODO: Get from inventory
         guildNameText.text = "Guild: None"; // TODO: Get from guild manager
 
@@ -126,36 +125,13 @@ public class VRMainMenuPanel : VRMenuPanel
     {
         if (option == "Log Out")
         {
+            // TODO: Handle logout
             Debug.Log("Logging out...");
             return;
         }
 
-        switch (option)
-        {
-            case "Inventory":
-                VRMenuSystem.Instance.ShowInventory();
-                break;
-            case "Equipment":
-                VRMenuSystem.Instance.ShowCharacter();
-                break;
-            case "Skills":
-                VRMenuSystem.Instance.ShowSkills();
-                break;
-            case "Skill Tree":
-                VRMenuSystem.Instance.ShowSkillTree();
-                break;
-            case "Map":
-                VRMenuSystem.Instance.ShowMap();
-                break;
-            case "Party":
-                VRMenuSystem.Instance.ShowParty();
-                break;
-            case "Quest Log":
-                VRMenuSystem.Instance.ShowQuestLog();
-                break;
-            case "Settings":
-                VRMenuSystem.Instance.ShowSettings();
-                break;
-        }
+        // Create submenu panel
+        VRMenuPanel panel = menuSystem.CreateMenuPanel(option, new Vector3(panelWidth + 50f, 0, 0));
+        panel.Show();
     }
 }

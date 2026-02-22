@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
@@ -20,9 +20,6 @@ public class VRSettingsPanel : VRMenuPanel
     [SerializeField] private Slider uiTransparencySlider;
     [SerializeField] private Slider uiScaleSlider;
     [SerializeField] private Toggle motionSicknessToggle;
-
-    [Header("Title")]
-    [SerializeField] private TextMeshProUGUI titleText;
 
     protected override void Awake()
     {
@@ -81,11 +78,5 @@ public class VRSettingsPanel : VRMenuPanel
     private void OnUIScaleChanged(float value)
     {
         // Update all panel scale
-    }
-
-    private void Start()
-    {
-        titleText.text = "⚙️ SETTINGS ⚙️";
-        titleText.color = VRMenuSystem.Instance.GetAccentColor(AccentType.Blue);
     }
 }

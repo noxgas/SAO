@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections.Generic;
 
 /// <summary>
@@ -298,7 +298,7 @@ public class SkillTreeSystem : MonoBehaviour
 
         return attributeType switch
         {
-            AttributeType.Health => characterStats.baseHealth - (pointsInvested * (int)healthPerPoint),
+            AttributeType.Health => characterStats.baseHealth - (pointsInvested * healthPerPoint),
             AttributeType.Damage => characterStats.basePhysicalDamage - (pointsInvested * damagePerPoint),
             AttributeType.Stamina => characterStats.baseStamina - (pointsInvested * staminaPerPoint),
             AttributeType.Mana => characterStats.baseMana - (pointsInvested * manaPerPoint),
@@ -356,7 +356,7 @@ public class SkillTreeSystem : MonoBehaviour
     public void ResetAllocations(int respecCost = 1000)
     {
         Debug.Log($"Resetting skill tree allocations (Cost: {respecCost} Gold)");
-
+        
         availableSkillPoints += spentSkillPoints;
         spentSkillPoints = 0;
         InitializeAttributeAllocations();

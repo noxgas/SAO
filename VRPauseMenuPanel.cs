@@ -1,82 +1,68 @@
-﻿using UnityEngine;
-using UnityEngine.UI;
+using UnityEngine;
 using TMPro;
 
 /// <summary>
-/// Pause menu panel for VR - shown when player pauses the game.
+/// VR Pause menu that appears with controller grip button.
 /// </summary>
-public class VRPauseMenuPanel : VRMenuPanel
+public class VRPauseMenuPanel : VRUIPanel
 {
-    [Header("Pause Menu Buttons")]
-    [SerializeField] private Button resumeButton;
-    [SerializeField] private Button settingsButton;
-    [SerializeField] private Button quitButton;
+    [Header("Buttons")]
+    [SerializeField] private VRButton resumeButton;
+    [SerializeField] private VRButton settingsButton;
+    [SerializeField] private VRButton characterButton;
+    [SerializeField] private VRButton inventoryButton;
+    [SerializeField] private VRButton mainMenuButton;
+    [SerializeField] private VRButton quitButton;
 
     [Header("Title")]
     [SerializeField] private TextMeshProUGUI titleText;
 
-    [Header("Message")]
-    [SerializeField] private TextMeshProUGUI pausedMessageText;
-
-    protected override void Awake()
+    private void Start()
     {
-        base.Awake();
-        panelWidth = 600f;
-        panelHeight = 500f;
-    }
-
-    public override void Initialize(VRMenuSystem system, string type, Vector3 offset)
-    {
-        base.Initialize(system, type, offset);
-        SetupButtons();
-    }
-
-    private void SetupButtons()
-    {
-        if (resumeButton != null)
-            resumeButton.onClick.AddListener(OnResumeClicked);
-
-        if (settingsButton != null)
-            settingsButton.onClick.AddListener(OnSettingsClicked);
-
-        if (quitButton != null)
-            quitButton.onClick.AddListener(OnQuitClicked);
-    }
-
-    public override void Show()
-    {
-        base.Show();
         titleText.text = "⏸️ PAUSED ⏸️";
-        titleText.color = VRMenuSystem.Instance.GetAccentColor(AccentType.Red);
-        pausedMessageText.text = "Game is Paused";
-        Time.timeScale = 0f;
-    }
+        titleText.color = VRUIManager.Instance.GetAccentColor(AccentType.Red);
 
-    public override void Hide()
-    {
-        base.Hide();
-        Time.timeScale = 1f;
+        resumeButton.OnClicked += OnResumeClicked;
+        settingsButton.OnClicked += OnSettingsClicked;
+        characterButton.OnClicked += OnCharacterClicked;
+        inventoryButton.OnClicked += OnInventoryClicked;
+        mainMenuButton.OnClicked += OnMainMenuClicked;
+        quitButton.OnClicked += OnQuitClicked;
     }
 
     private void OnResumeClicked()
     {
-        Debug.Log("Resuming game...");
-        VRMenuSystem.Instance.HidePauseMenu();
+        VRUIManager.Instance.HidePauseMenu();
     }
 
     private void OnSettingsClicked()
     {
-        Debug.Log("Opening settings...");
-        VRMenuSystem.Instance.ShowSettings();
+        VRUIManager.Instance.ShowSettings();
+    }
+
+    private void OnCharacterClicked()
+    {
+        VRUIManager.Instance.ShowCharacter();
+    }
+
+    private void OnInventoryClicked()
+    {
+        VRUIManager.Instance.ShowInventory();
+    }
+
+    private void OnMainMenuClicked()
+    {
+        Time.timeScale = 1f;
+        UnityEngine.SceneManagement.SceneManager.LoadScene("MainMenu");
     }
 
     private void OnQuitClicked()
     {
-        Debug.Log("Quitting game...");
-#if UNITY_EDITOR
+        Time.timeScale = 1f;
+        #if UNITY_EDITOR
             UnityEditor.EditorApplication.isPlaying = false;
-#else
-        Application.Quit();
-#endif
+        #else
+            Application.Quit();
+        #endif
     }
 }

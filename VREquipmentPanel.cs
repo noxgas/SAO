@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
@@ -16,9 +16,6 @@ public class VREquipmentPanel : VRMenuPanel
     [Header("Equipment Slots")]
     [SerializeField] private Transform equipmentSlotsContainer;
     [SerializeField] private VREquipmentSlot equipmentSlotPrefab;
-
-    [Header("Title")]
-    [SerializeField] private TextMeshProUGUI titleText;
 
     private string[] equipmentSlots = new string[]
     {
@@ -55,11 +52,5 @@ public class VREquipmentPanel : VRMenuPanel
             VREquipmentSlot slotUI = Instantiate(equipmentSlotPrefab, equipmentSlotsContainer);
             slotUI.Initialize(slot);
         }
-    }
-
-    private void Start()
-    {
-        titleText.text = "👕 EQUIPMENT 👕";
-        titleText.color = VRMenuSystem.Instance.GetAccentColor(AccentType.Green);
     }
 }

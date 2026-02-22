@@ -2,12 +2,15 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-public class VRPlayerHUDPanel : VRMenuPanel
+/// <summary>
+/// VR In-game HUD showing player stats during gameplay.
+/// Always visible, positioned near player's head.
+/// </summary>
+public class VRPlayerHUDPanel : VRUIPanel
 {
     [Header("Player Info")]
     [SerializeField] private TextMeshProUGUI playerNameText;
     [SerializeField] private TextMeshProUGUI levelText;
-    [SerializeField] private TextMeshProUGUI floorText;
 
     [Header("Health & Stamina")]
     [SerializeField] private Image healthBar;
@@ -26,12 +29,12 @@ public class VRPlayerHUDPanel : VRMenuPanel
     protected override void Awake()
     {
         base.Awake();
-        scaleAnimationDuration = 0.1f;
+        // HUD should not fade in/out
+        animationDuration = 0.1f;
     }
 
-    public override void Show()
+    private void Start()
     {
-        base.Show();
         currentPlayer = FindObjectOfType<Player>();
         isInitialized = true;
     }
@@ -46,10 +49,11 @@ public class VRPlayerHUDPanel : VRMenuPanel
 
     private void UpdateHUD()
     {
+        // Update player info
         playerNameText.text = currentPlayer.name;
         levelText.text = $"Lvl {currentPlayer.Level}";
-        floorText.text = $"Floor {WorldManager.Instance.GetCurrentFloor()}";
 
+        // Update bars
         PlayerCombat combat = currentPlayer.GetComponent<PlayerCombat>();
         if (combat != null)
         {
@@ -61,22 +65,29 @@ public class VRPlayerHUDPanel : VRMenuPanel
             staminaText.text = $"STA: {Mathf.RoundToInt(combat.StaminaPercent * 100)}%";
             manaText.text = $"MANA: {Mathf.RoundToInt(combat.ManaPercent * 100)}%";
 
+            // Update health bar color
             if (combat.HealthPercent > 0.5f)
-                healthBar.color = new Color(0, 1, 0.5f);
+                healthBar.color = new Color(0, 1, 0.5f); // Green
             else if (combat.HealthPercent > 0.25f)
-                healthBar.color = new Color(1, 1, 0);
+                healthBar.color = new Color(1, 1, 0); // Yellow
             else
-                healthBar.color = new Color(1, 0.2f, 0.2f);
+                healthBar.color = new Color(1, 0.2f, 0.2f); // Red
 
+            // Update combo if dual wield active
             DualWieldSystem dualWield = currentPlayer.GetComponent<DualWieldSystem>();
-            if (dualWield != null && dualWield.IsComboActive())
+            if (dualWield != null && dualWield.IsDualWieldActive)
             {
-                comboCountText.text = $"COMBO: {dualWield.GetCurrentComboCount()}/5";
-                if (dualWield.GetCurrentComboCount() >= 5)
-                    comboCountText.color = new Color(1, 1, 0);
+                comboCountText.text = $"COMBO: {dualWield.CurrentComboHits}/5";
+                if (dualWield.CanUseFinalStrike)
+                    comboCountText.color = new Color(1, 1, 0); // Yellow - ready!
                 else
-                    comboCountText.color = new Color(0, 1, 1);
+                    comboCountText.color = new Color(0, 1, 1); // Cyan
             }
         }
+    }
+
+    protected override void OnShow()
+    {
+        currentPlayer = FindObjectOfType<Player>();
     }
 }

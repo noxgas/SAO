@@ -1,404 +1,409 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections.Generic;
+using Valve.VR;
 
 /// <summary>
-/// Advanced combo system with full game integration.
-/// Handles: dual wield, boss mechanics, floor scaling, skill trees, guilds, and VR input.
+/// Combo system for Swordsman classes.
+/// Hold trigger to perform slashes in sequence.
+/// Reward precision and speed with damage multipliers.
+/// 
+/// Damage Multipliers:
+/// 2-Hit: Sloppy 20% | Precise 50%
+/// 3-Hit: Sloppy 40% | Precise 100%
+/// 4-Hit: Sloppy 60% | Precise 150%
+/// 5-Hit: Sloppy 80% | Precise 200%
+/// 
+/// Damage Scaling:
+/// Floor 1: Base 30-50 per swing
+/// Floor 50: ~150-250 per swing
+/// Floor 100: ~300-500+ per swing
 /// </summary>
 public class ComboSystem : MonoBehaviour
 {
     [Header("Combo Settings")]
-    [SerializeField] private float comboWindow = 2f;
-    [SerializeField] private float comboResetDelay = 3f;
-    [SerializeField] private int maxComboCount = 10;
-    [SerializeField] private float damagePerComboHit = 1.1f;
-    [SerializeField] private float criticalHitChance = 0.15f;
-    [SerializeField] private float criticalHitMultiplier = 1.5f;
+    [SerializeField] private float maxComboWindow = 1.5f; // Time between slashes
+    [SerializeField] private float comboTimeoutDuration = 2f; // Reset combo after this time
+    
+    [Header("Precision Settings")]
+    [SerializeField] private float precisionThresholdDistance = 0.3f; // How close slashes need to be
+    [SerializeField] private float precisionThresholdTiming = 0.2f; // Timing window for precision
+    
+    [Header("Damage Scaling")]
+    [SerializeField] private float baseMinDamage = 30f; // Floor 1 minimum
+    [SerializeField] private float baseMaxDamage = 50f; // Floor 1 maximum
+    [SerializeField] private float damageScalePerFloor = 1.08f; // 8% increase per floor
+    
+    [Header("References")]
+    [SerializeField] private Transform rightHandTransform;
+    [SerializeField] private PlayerCombat playerCombat;
+    [SerializeField] private SteamVR_Input_Sources controllerHand = SteamVR_Input_Sources.RightHand;
 
-    [Header("Floor Scaling")]
-    [SerializeField] private int currentFloor = 1;
-    [SerializeField] private float floorDamageMultiplier = 1.2f;
-    [SerializeField] private float floorHealthScaling = 1.1f;
-
-    [Header("Dual Wield Bonuses")]
-    [SerializeField] private float dualWieldComboBonus = 0.5f;
-    [SerializeField] private float dualWieldCritBonus = 0.05f;
-    [SerializeField] private float dualWieldSpeedBonus = 1.2f;
-
-    [Header("Boss Mechanics")]
-    [SerializeField] private float bossComboThreshold = 5f;
-    [SerializeField] private float bossComboRewardMultiplier = 2f;
-
-    [Header("Guild Bonuses")]
-    [SerializeField] private float guildComboBonus = 0.1f;
-    [SerializeField] private float guildDamageBonus = 0.05f;
-
-    // Combo State
-    private int comboCounter = 0;
-    private float comboTimer = 0f;
-    private float lastHitTime = 0f;
-    private bool isComboActive = false;
-    private bool isBossComboActive = false;
-    private int consecutiveBossHits = 0;
-
-    // Component References
     private Player player;
-    private PlayerCombat playerCombat;
-    private DualWieldSystem dualWieldSystem;
-    private BossEnemy currentBoss;
-    private Guild playerGuild;
+    private Swordsman swordsmanClass;
+    private List<SlashData> currentCombo = new List<SlashData>();
+    private float comboTimeout;
+    private bool isComboActive = false;
+    private Vector3 lastSlashPosition;
+    private float lastSlashTime;
+    private int currentFloor = 1;
 
-    // Tracking
-    private List<float> comboHitTimes = new List<float>();
-    private List<float> comboDamages = new List<float>();
-    private List<bool> comboCrits = new List<bool>();
-    private float totalComboMultiplier = 1f;
-    private float totalComboDamage = 0f;
-    private int totalComboCrits = 0;
+    [System.Serializable]
+    private class SlashData
+    {
+        public int slashNumber;
+        public Vector3 position;
+        public float timestamp;
+        public bool isPrecise;
+    }
 
-    // Performance Metrics
-    private float bestComboMultiplier = 1f;
-    private int longestComboStreak = 0;
-    private float totalComboXpEarned = 0f;
+    private ComboPreset[] comboPresets;
+
+    [System.Serializable]
+    public class ComboPreset
+    {
+        public int hits;
+        public float sloppyDamageMultiplier;
+        public float preciseDamageMultiplier;
+    }
 
     private void Awake()
     {
         player = GetComponent<Player>();
         playerCombat = GetComponent<PlayerCombat>();
-        dualWieldSystem = GetComponent<DualWieldSystem>();
+        if (rightHandTransform == null)
+            rightHandTransform = transform;
+
+        InitializeComboPresets();
+    }
+
+    private void InitializeComboPresets()
+    {
+        comboPresets = new ComboPreset[]
+        {
+            new ComboPreset { hits = 2, sloppyDamageMultiplier = 0.2f, preciseDamageMultiplier = 0.5f },
+            new ComboPreset { hits = 3, sloppyDamageMultiplier = 0.4f, preciseDamageMultiplier = 1.0f },
+            new ComboPreset { hits = 4, sloppyDamageMultiplier = 0.6f, preciseDamageMultiplier = 1.5f },
+            new ComboPreset { hits = 5, sloppyDamageMultiplier = 0.8f, preciseDamageMultiplier = 2.0f }
+        };
+    }
+
+    public void SetCurrentFloor(int floor)
+    {
+        currentFloor = Mathf.Max(1, floor);
+    }
+
+    /// <summary>
+    /// Calculate base damage for current floor.
+    /// Scales exponentially with floor level.
+    /// Floor 1: 30-50
+    /// Floor 10: ~65-108
+    /// Floor 50: ~155-258
+    /// Floor 100: ~405-675
+    /// </summary>
+    private float GetFloorScaledDamage(float baseDamage)
+    {
+        float floorMultiplier = Mathf.Pow(damageScalePerFloor, currentFloor - 1);
+        return baseDamage * floorMultiplier;
     }
 
     private void Update()
     {
-        UpdateComboTimer();
-        MonitorBossCombo();
+        if (playerCombat == null || player == null)
+            return;
+
+        // Check if player is Swordsman class
+        if (player.CharacterClass.ClassName != "Swordsman")
+            return;
+
+        HandleComboInput();
+        UpdateComboTimeout();
     }
 
-    /// <summary>
-    /// Set the current floor level for damage scaling.
-    /// </summary>
-    public void SetCurrentFloor(int floor)
+    private void HandleComboInput()
     {
-        currentFloor = floor;
-        Debug.Log($"🏢 Floor {floor} - Damage: {GetFloorDamageMultiplier():F2}x");
+        // Trigger held - start/continue combo
+        if (SteamVR_Input.GetState("InteractUI", controllerHand))
+        {
+            if (!isComboActive)
+            {
+                StartCombo();
+            }
+        }
+        // Trigger released - register slash
+        else if (SteamVR_Input.GetStateUp("InteractUI", controllerHand))
+        {
+            RegisterSlash();
+        }
     }
 
-    public int GetCurrentFloor() => currentFloor;
-
-    /// <summary>
-    /// Set the current boss being fought.
-    /// </summary>
-    public void SetCurrentBoss(BossEnemy boss)
-    {
-        currentBoss = boss;
-        consecutiveBossHits = 0;
-        isBossComboActive = false;
-        Debug.Log($"⚔️ Boss set: {boss.gameObject.name}");
-    }
-
-    /// <summary>
-    /// Set player guild for guild bonuses.
-    /// </summary>
-    public void SetPlayerGuild(Guild guild)
-    {
-        playerGuild = guild;
-        if (guild != null)
-            Debug.Log($"Guild bonus: +{(guildComboBonus * 100):F0}% combo, +{(guildDamageBonus * 100):F0}% damage");
-    }
-
-    /// <summary>
-    /// Start a new combo.
-    /// </summary>
-    public void StartCombo()
+    private void StartCombo()
     {
         if (isComboActive)
             return;
 
         isComboActive = true;
-        comboCounter = 0;
-        comboTimer = comboWindow;
-        comboHitTimes.Clear();
-        comboDamages.Clear();
-        comboCrits.Clear();
-        totalComboMultiplier = 1f;
-        totalComboDamage = 0f;
-        totalComboCrits = 0;
+        currentCombo.Clear();
+        comboTimeout = comboTimeoutDuration;
 
-        Debug.Log("⚡ COMBO STARTED!");
+        Debug.Log("🗡️ Combo started - hold trigger to perform slashes");
     }
 
-    /// <summary>
-    /// Register a hit in the combo with full system integration.
-    /// </summary>
-    public bool RegisterHit(float baseDamage, BossEnemy target = null)
+    private void RegisterSlash()
     {
         if (!isComboActive)
-            StartCombo();
-
-        if (comboTimer <= 0)
-        {
-            Debug.Log("❌ Combo window expired!");
-            EndCombo();
-            return false;
-        }
-
-        comboCounter++;
-        comboHitTimes.Add(Time.time);
-        lastHitTime = Time.time;
-        comboTimer = comboWindow;
-
-        // Calculate final damage multiplier
-        totalComboMultiplier = CalculateTotalMultiplier();
-
-        // Check for critical hit
-        bool isCritical = Random.value < GetCriticalChance();
-        if (isCritical)
-        {
-            totalComboCrits++;
-            totalComboMultiplier *= criticalHitMultiplier;
-        }
-
-        comboCrits.Add(isCritical);
-
-        // Apply all multipliers
-        float finalDamage = baseDamage * totalComboMultiplier;
-        comboDamages.Add(finalDamage);
-        totalComboDamage += finalDamage;
-
-        // Apply damage to boss
-        if (target != null)
-        {
-            target.TakeDamage(finalDamage, player);
-            consecutiveBossHits++;
-        }
-
-        // Log hit with all details
-        string critText = isCritical ? " 💥 CRIT!" : "";
-        Debug.Log($"⚡ HIT #{comboCounter} | DMG: {finalDamage:F1} | Multiplier: {totalComboMultiplier:F2}x | Floor: {currentFloor}{critText}");
-
-        // Check achievements
-        if (comboCounter >= maxComboCount)
-            ExecuteMaxCombo();
-
-        if (currentBoss != null && comboCounter >= (int)bossComboThreshold)
-            ActivateBossCombo();
-
-        return true;
-    }
-
-    /// <summary>
-    /// Calculate total damage multiplier from all sources.
-    /// </summary>
-    private float CalculateTotalMultiplier()
-    {
-        float multiplier = 1f;
-
-        // Combo hits multiplier
-        multiplier += (comboCounter * (damagePerComboHit - 1f));
-
-        // Floor scaling
-        multiplier *= (1f + ((currentFloor - 1) * 0.1f));
-
-        // Dual wield bonus
-        if (dualWieldSystem != null && dualWieldSystem.IsDualWieldActive())
-            multiplier *= (1f + dualWieldComboBonus);
-
-        // Guild bonus
-        if (playerGuild != null)
-            multiplier *= (1f + guildComboBonus);
-
-        // Skill tree bonuses (if available)
-        if (player != null && player.SkillTree != null)
-            multiplier *= player.SkillTree.GetComboMultiplierBonus();
-
-        return multiplier;
-    }
-
-    /// <summary>
-    /// Get critical hit chance with all bonuses.
-    /// </summary>
-    private float GetCriticalChance()
-    {
-        float chance = criticalHitChance;
-
-        if (dualWieldSystem != null && dualWieldSystem.IsDualWieldActive())
-            chance += dualWieldCritBonus;
-
-        if (playerGuild != null)
-            chance += 0.02f; // Small guild bonus
-
-        return Mathf.Clamp01(chance);
-    }
-
-    /// <summary>
-    /// Get floor damage multiplier.
-    /// </summary>
-    public float GetFloorDamageMultiplier()
-    {
-        return 1f + ((currentFloor - 1) * 0.1f);
-    }
-
-    /// <summary>
-    /// Activate special boss combo mode.
-    /// </summary>
-    private void ActivateBossCombo()
-    {
-        if (isBossComboActive)
             return;
 
-        isBossComboActive = true;
-        Debug.Log("\n╔════════════════════════════════════════╗");
-        Debug.Log($"║     ⚡ BOSS COMBO ACTIVATED! ⚡         ║");
-        Debug.Log($"║ Hits: {comboCounter,32} ║");
-        Debug.Log($"║ Damage Multiplier: {bossComboRewardMultiplier,21:F2}x ║");
-        Debug.Log("╚════════════════════════════════════════╝\n");
-    }
-
-    /// <summary>
-    /// Monitor boss combo state.
-    /// </summary>
-    private void MonitorBossCombo()
-    {
-        if (isBossComboActive && currentBoss != null)
+        int slashNumber = currentCombo.Count + 1;
+        
+        // Check if this is a valid combo continuation
+        if (slashNumber > 1)
         {
-            if (currentBoss.GetHealthPercent() <= 0)
+            float timeSinceLastSlash = Time.time - lastSlashTime;
+            
+            // Check if slash is within combo window
+            if (timeSinceLastSlash > maxComboWindow)
             {
-                ExecuteBossComboReward();
+                Debug.LogWarning($"❌ Combo broken! Slash took {timeSinceLastSlash}s (max: {maxComboWindow}s)");
+                EndCombo(false);
+                return;
             }
         }
+
+        // Get current hand position
+        Vector3 currentPosition = rightHandTransform.position;
+        float currentTime = Time.time;
+
+        // Determine if this slash is precise
+        bool isPrecise = IsPreciseSlash(slashNumber, currentPosition, currentTime);
+
+        // Create slash data
+        SlashData slash = new SlashData
+        {
+            slashNumber = slashNumber,
+            position = currentPosition,
+            timestamp = currentTime,
+            isPrecise = isPrecise
+        };
+
+        currentCombo.Add(slash);
+        lastSlashPosition = currentPosition;
+        lastSlashTime = currentTime;
+
+        Debug.Log($"✓ Slash {slashNumber} registered - {(isPrecise ? "PRECISE" : "sloppy")}");
+
+        // Check if combo is complete (max 5 hits)
+        if (slashNumber >= 5)
+        {
+            Debug.Log("🎉 5-Hit Combo Complete!");
+            EndCombo(true);
+        }
+        else
+        {
+            comboTimeout = comboTimeoutDuration;
+        }
     }
 
-    /// <summary>
-    /// Execute boss combo reward.
-    /// </summary>
-    private void ExecuteBossComboReward()
+    private bool IsPreciseSlash(int slashNumber, Vector3 currentPosition, float currentTime)
     {
-        if (!isBossComboActive)
+        if (slashNumber == 1)
+            return true; // First slash is always considered precise
+
+        // Check timing precision
+        float timeSinceLastSlash = currentTime - lastSlashTime;
+        float expectedTiming = maxComboWindow / 3f; // Optimal timing
+        float timingDeviation = Mathf.Abs(timeSinceLastSlash - expectedTiming);
+        bool isTimingPrecise = timingDeviation <= precisionThresholdTiming;
+
+        // Check spatial precision (slashes in similar area)
+        float distanceFromLastSlash = Vector3.Distance(currentPosition, lastSlashPosition);
+        bool isPositionPrecise = distanceFromLastSlash <= precisionThresholdDistance;
+
+        bool isPrecise = isTimingPrecise && isPositionPrecise;
+
+        Debug.Log($"  Timing: {timeSinceLastSlash:F2}s (deviation: {timingDeviation:F2}s) - {(isTimingPrecise ? "✓" : "✗")}");
+        Debug.Log($"  Distance: {distanceFromLastSlash:F2}m - {(isPositionPrecise ? "✓" : "✗")}");
+
+        return isPrecise;
+    }
+
+    private void UpdateComboTimeout()
+    {
+        if (!isComboActive)
             return;
 
-        float rewardDamage = totalComboDamage * bossComboRewardMultiplier;
-        float rewardXp = comboCounter * 100f;
+        comboTimeout -= Time.deltaTime;
 
-        Debug.Log("\n╔════════════════════════════════════════╗");
-        Debug.Log($"║        🎉 BOSS COMBO COMPLETE! 🎉      ║");
-        Debug.Log($"║ Consecutive Hits: {consecutiveBossHits,19} ║");
-        Debug.Log($"║ Total Damage: {totalComboDamage,25:F1} ║");
-        Debug.Log($"║ Bonus Damage: {rewardDamage,25:F1} ║");
-        Debug.Log($"║ XP Reward: {rewardXp,28:F0} ║");
-        Debug.Log("╚════════════════════════════════════════╝\n");
-
-        if (player != null)
-            player.GainExperience((int)rewardXp);
-
-        totalComboXpEarned += rewardXp;
-        isBossComboActive = false;
-    }
-
-    /// <summary>
-    /// Execute the maximum combo (10 hits).
-    /// </summary>
-    private void ExecuteMaxCombo()
-    {
-        Debug.Log("\n╔════════════════════════════════════════╗");
-        Debug.Log($"║         🎉 MAX COMBO! ({comboCounter} HITS)       ║");
-        Debug.Log($"║ Total Damage: {totalComboDamage,25:F1} ║");
-        Debug.Log($"║ Multiplier: {totalComboMultiplier,28:F2}x ║");
-        Debug.Log($"║ Critical Hits: {totalComboCrits,24} ║");
-        Debug.Log($"║ Floor Bonus: {(currentFloor * 10),26}% ║");
-        Debug.Log("╚════════════════════════════════════════╝\n");
-
-        // Track best combo
-        if (totalComboMultiplier > bestComboMultiplier)
-            bestComboMultiplier = totalComboMultiplier;
-
-        if (comboCounter > longestComboStreak)
-            longestComboStreak = comboCounter;
-
-        // Dual wield bonus damage
-        if (dualWieldSystem != null && dualWieldSystem.IsDualWieldActive())
+        if (comboTimeout <= 0)
         {
-            float dualWieldBonus = totalComboDamage * 0.5f;
-            totalComboDamage += dualWieldBonus;
-            Debug.Log($"✨ Dual Wield Bonus: +{dualWieldBonus:F1} damage!");
-        }
-
-        // Grant XP
-        float comboXp = comboCounter * 50f;
-        if (player != null)
-            player.GainExperience((int)comboXp);
-
-        totalComboXpEarned += comboXp;
-    }
-
-    /// <summary>
-    /// Update the combo timer each frame.
-    /// </summary>
-    private void UpdateComboTimer()
-    {
-        if (isComboActive)
-        {
-            comboTimer -= Time.deltaTime;
-            if (comboTimer <= 0)
-                EndCombo();
+            Debug.Log("⏱️ Combo timeout - sequence completed");
+            EndCombo(true);
         }
     }
 
-    /// <summary>
-    /// End the current combo.
-    /// </summary>
-    public void EndCombo()
+    private void EndCombo(bool executeCombo)
     {
-        if (comboCounter > 0)
-        {
-            Debug.Log($"✓ Combo ended! {comboCounter} hits, {totalComboDamage:F1} total damage, {totalComboCrits} crits");
-        }
+        if (!isComboActive)
+            return;
 
         isComboActive = false;
-        isBossComboActive = false;
-        comboCounter = 0;
-        comboTimer = 0f;
-        totalComboMultiplier = 1f;
-        consecutiveBossHits = 0;
-        comboHitTimes.Clear();
-        comboDamages.Clear();
-        comboCrits.Clear();
+
+        if (currentCombo.Count == 0)
+            return;
+
+        if (executeCombo)
+        {
+            ExecuteCombo();
+        }
+        else
+        {
+            Debug.Log("❌ Combo failed");
+        }
+
+        currentCombo.Clear();
     }
 
-    // Getters
-    public int GetComboCount() => comboCounter;
-    public float GetComboMultiplier() => totalComboMultiplier;
-    public float GetComboProgress() => Mathf.Clamp01(1f - (comboTimer / comboWindow));
-    public bool IsComboActive() => isComboActive;
-    public bool IsBossComboActive() => isBossComboActive;
-    public float GetTotalComboDamage() => totalComboDamage;
-    public int GetTotalComboCrits() => totalComboCrits;
-    public float GetBestComboMultiplier() => bestComboMultiplier;
-    public int GetLongestComboStreak() => longestComboStreak;
-    public float GetTotalComboXpEarned() => totalComboXpEarned;
-    public int GetConsecutiveBossHits() => consecutiveBossHits;
-    public List<float> GetComboHitTimes() => comboHitTimes;
-    public List<float> GetComboDamages() => comboDamages;
-    public List<bool> GetComboCrits() => comboCrits;
-
-    /// <summary>
-    /// Get comprehensive combo statistics.
-    /// </summary>
-    public string GetComboStats()
+    private void ExecuteCombo()
     {
-        return $"Combo: {comboCounter}/{maxComboCount} | Multiplier: {totalComboMultiplier:F2}x | " +
-               $"Crits: {totalComboCrits} | DMG: {totalComboDamage:F1} | Floor: {currentFloor} | " +
-               $"Guild: {(playerGuild != null ? "✓" : "✗")} | DualWield: {(dualWieldSystem?.IsDualWieldActive() ?? false ? "✓" : "✗")}";
+        int comboHits = currentCombo.Count;
+        
+        Debug.Log($"\n╔════════════════════════════════════════╗");
+        Debug.Log($"║         COMBO EXECUTED: {comboHits}-HIT          ║");
+        Debug.Log($"╚════════════════════════════════════════╝\n");
+
+        // Count precise slashes
+        int preciseCount = 0;
+        foreach (var slash in currentCombo)
+        {
+            if (slash.isPrecise)
+                preciseCount++;
+        }
+
+        bool isOverallPrecise = preciseCount >= (comboHits * 0.7f); // 70% precise = overall precise
+
+        // Get damage multiplier
+        float damageMultiplier = GetComboMultiplier(comboHits, isOverallPrecise);
+
+        // Get base damage (scaled by floor)
+        float baseDamage = GetBaseComboSlashDamage();
+        float totalDamage = baseDamage * (1f + damageMultiplier);
+
+        // Display results
+        Debug.Log($"Floor: {currentFloor}");
+        Debug.Log($"Base Damage: {baseDamage:F1}");
+        Debug.Log($"Precision: {preciseCount}/{comboHits} slashes precise");
+        Debug.Log($"Multiplier: {(isOverallPrecise ? "PRECISE" : "SLOPPY")} - {damageMultiplier * 100f:F0}% bonus");
+        Debug.Log($"Total Damage: {totalDamage:F1}");
+
+        // Apply damage to nearby enemies
+        ApplyComboDamage(totalDamage, comboHits);
+
+        // Reward player
+        RewardCombo(comboHits, isOverallPrecise);
+    }
+
+    private float GetComboMultiplier(int hits, bool isPrecise)
+    {
+        foreach (var preset in comboPresets)
+        {
+            if (preset.hits == hits)
+            {
+                return isPrecise ? preset.preciseDamageMultiplier : preset.sloppyDamageMultiplier;
+            }
+        }
+
+        return 0f;
     }
 
     /// <summary>
-    /// Reset combo system (for level/floor changes).
+    /// Get base damage per slash (scaled by floor).
+    /// Floor 1: 15-25
+    /// Floor 10: ~32-54
+    /// Floor 50: ~77-129
+    /// Floor 100: ~202-337
     /// </summary>
-    public void ResetComboSystem()
+    private float GetBaseComboSlashDamage()
     {
-        EndCombo();
-        comboHitTimes.Clear();
-        comboDamages.Clear();
-        comboCrits.Clear();
-        Debug.Log("✓ Combo system reset");
+        float scaledMinDamage = GetFloorScaledDamage(baseMinDamage);
+        float scaledMaxDamage = GetFloorScaledDamage(baseMaxDamage);
+        float damage = Random.Range(scaledMinDamage, scaledMaxDamage);
+
+        return damage;
+    }
+
+    private void ApplyComboDamage(float damage, int hits)
+    {
+        // Find all enemies in range
+        Collider[] enemies = Physics.OverlapSphere(transform.position, 15f);
+
+        int hitCount = 0;
+        foreach (var enemyCollider in enemies)
+        {
+            AIEnemy enemy = enemyCollider.GetComponent<AIEnemy>();
+            if (enemy != null)
+            {
+                enemy.TakeDamage(damage);
+                hitCount++;
+                Debug.Log($"💥 Enemy hit for {damage:F1} damage");
+            }
+        }
+
+        if (hitCount == 0)
+        {
+            Debug.Log("⚠️ No enemies hit by combo");
+        }
+    }
+
+    private void RewardCombo(int hits, bool isPrecise)
+    {
+        // Bonus experience for precise combos (scales with floor)
+        int baseXP = hits * 100;
+        int floorBonus = (currentFloor - 1) * 50; // 50 XP per floor
+        int bonusXP = baseXP + floorBonus;
+
+        if (isPrecise)
+            bonusXP = (int)(bonusXP * 1.5f); // 50% bonus for precise
+
+        player.GainExperience(bonusXP);
+
+        // VFX/SFX feedback
+        DisplayComboFeedback(hits, isPrecise);
+    }
+
+    private void DisplayComboFeedback(int hits, bool isPrecise)
+    {
+        string precisionText = isPrecise ? "✨ PRECISE" : "HIT";
+        string hitText = hits switch
+        {
+            2 => "Double Strike",
+            3 => "Triple Strike",
+            4 => "Quad Strike",
+            5 => "Ultimate Combo",
+            _ => "Unknown"
+        };
+
+        Debug.Log($"\n🎉 {hitText} - {precisionText} 🎉\n");
+    }
+
+    /// <summary>
+    /// Get current combo status (for UI display).
+    /// </summary>
+    public int GetCurrentComboCount()
+    {
+        return currentCombo.Count;
+    }
+
+    public bool IsComboActive()
+    {
+        return isComboActive;
+    }
+
+    public float GetComboProgress()
+    {
+        return 1f - (comboTimeout / comboTimeoutDuration);
+    }
+
+    public float GetFloorScaledBaseDamage()
+    {
+        return GetFloorScaledDamage(baseMinDamage);
     }
 }

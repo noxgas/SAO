@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 /// <summary>
 /// Global damage scaling system based on floor level.
@@ -130,11 +130,11 @@ public class DamageScalingSystem : MonoBehaviour
         // Boss health scales to NEXT floor's median damage
         int scalingFloor = Mathf.Min(floor + 1, 100);
         float nextFloorMedianDamage = GetMedianWeaponDamage(scalingFloor);
-
+        
         // Boss health = base * (next floor median / base median)
         float baseMedian = GetMedianWeaponDamage(floor);
         float healthScale = nextFloorMedianDamage / baseMedian;
-
+        
         return baseHealth * healthScale;
     }
 

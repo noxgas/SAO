@@ -1,298 +1,160 @@
-﻿using UnityEngine;
-using System;
+using UnityEngine;
 using System.Collections.Generic;
 
+public enum CombatStyle
+{
+    MeleeStamina,
+    MagicMana
+}
+
 /// <summary>
-/// Advanced combat system with threat management, ability queuing, and combat states.
-/// Features: Interrupt system, ability combo validation, threat-based targeting, combat buffs.
+/// Handles player combat logic, skill execution, and resource management.
+/// Now integrates with Dual Wield System for combo tracking.
 /// </summary>
 public class PlayerCombat : MonoBehaviour
 {
-    [Header("Combat State")]
-    [SerializeField] private CombatState currentCombatState = CombatState.Idle;
-    [SerializeField] private float combatTimeout = 15f;
-    [SerializeField] private float threatRange = 50f;
-
-    private Player player;
-    private BossEnemy currentTarget;
-    private float lastCombatTime = 0f;
-    private float totalThreatGenerated = 0f;
-
-    // Ability system
+    [SerializeField] private float currentHealth;
+    [SerializeField] private float currentStamina;
+    [SerializeField] private float currentMana;
+    
+    private CharacterStats stats;
     private Dictionary<string, Skill> skills = new Dictionary<string, Skill>();
-    private Queue<string> abilityQueue = new Queue<string>();
-    private string currentCastingAbility = "";
-    private float castProgress = 0f;
+    private Dictionary<string, float> skillCooldowns = new Dictionary<string, float>();
+    private CombatStyle combatStyle;
+    private DualWieldSystem dualWieldSystem;
 
-    // Combat statistics
-    private CombatStatistics combatStats = new CombatStatistics();
+    private float staminaRegenRate = 30f; // per second
+    private float manaRegenRate = 25f; // per second
 
-    public bool IsInCombat => currentCombatState != CombatState.Idle;
-    public CombatState CurrentCombatState => currentCombatState;
-    public BossEnemy CurrentTarget => currentTarget;
-    public CombatStatistics CombatStats => combatStats;
+    public float HealthPercent => stats != null ? currentHealth / stats.MaxHealth : 0f;
+    public float StaminaPercent => stats != null ? currentStamina / stats.MaxStamina : 0f;
+    public float ManaPercent => stats != null ? currentMana / stats.MaxMana : 0f;
 
-    private void Update()
+    public void Initialize(CharacterStats characterStats)
     {
-        UpdateCombatState();
-        ProcessAbilityQueue();
-        UpdateCasting();
+        stats = characterStats.Clone();
+        currentHealth = stats.MaxHealth;
+        currentStamina = stats.MaxStamina;
+        currentMana = stats.MaxMana;
+
+        dualWieldSystem = GetComponent<DualWieldSystem>();
     }
 
-    public void Initialize(Player playerRef)
+    public void SetCombatStyle(CombatStyle style)
     {
-        player = playerRef;
-        Debug.Log("✓ Advanced PlayerCombat system initialized");
-        Debug.Log("  Threat Management: Active");
-        Debug.Log("  Ability Queueing: Active");
-        Debug.Log("  Combat Statistics: Active");
+        combatStyle = style;
     }
 
-    /// <summary>
-    /// Update combat state based on timing.
-    /// </summary>
-    private void UpdateCombatState()
-    {
-        if (IsInCombat && Time.time - lastCombatTime > combatTimeout)
-        {
-            ExitCombat();
-        }
-    }
-
-    /// <summary>
-    /// Enter combat with a target.
-    /// </summary>
-    public void EnterCombat(BossEnemy target)
-    {
-        currentTarget = target;
-        currentCombatState = CombatState.InCombat;
-        lastCombatTime = Time.time;
-        totalThreatGenerated = 0f;
-
-        Debug.Log($"⚔️ Entered combat with {target.BossName}!");
-        combatStats.OnCombatStart();
-    }
-
-    /// <summary>
-    /// Exit combat.
-    /// </summary>
-    public void ExitCombat()
-    {
-        currentCombatState = CombatState.Idle;
-        currentTarget = null;
-        abilityQueue.Clear();
-        currentCastingAbility = "";
-
-        Debug.Log($"✓ Exited combat | Total Threat: {totalThreatGenerated:F1}");
-        combatStats.OnCombatEnd();
-    }
-
-    /// <summary>
-    /// Add a skill to the combat system.
-    /// </summary>
     public void AddSkill(Skill skill)
     {
-        skills[skill.SkillId] = skill;
-        Debug.Log($"✓ Skill added: {skill.SkillName}");
+        var skillCopy = skill.Clone();
+        skills[skill.skillId] = skillCopy;
+        skillCooldowns[skill.skillId] = 0f;
     }
 
-    /// <summary>
-    /// Queue an ability for execution.
-    /// </summary>
-    public bool QueueAbility(string skillId)
+    public bool TryExecuteSkill(string skillId, Vector3 targetPosition = default)
     {
         if (!skills.TryGetValue(skillId, out var skill))
         {
-            Debug.LogWarning($"❌ Skill {skillId} not found!");
+            Debug.LogWarning($"Skill not found: {skillId}");
             return false;
         }
 
-        if (!skill.IsReady)
+        // Check cooldown
+        if (skillCooldowns.TryGetValue(skillId, out var cooldown) && cooldown > 0)
         {
-            Debug.LogWarning($"⏱️ {skill.SkillName} is on cooldown!");
+            Debug.LogWarning($"Skill on cooldown: {skillId}");
             return false;
         }
 
-        abilityQueue.Enqueue(skillId);
-        Debug.Log($"📋 Queued: {skill.SkillName} (Queue size: {abilityQueue.Count})");
+        // Check resources
+        if (skill.staminaCost > 0 && currentStamina < skill.staminaCost)
+        {
+            Debug.LogWarning("Insufficient stamina");
+            return false;
+        }
+
+        if (skill.manaCost > 0 && currentMana < skill.manaCost)
+        {
+            Debug.LogWarning("Insufficient mana");
+            return false;
+        }
+
+        // Consume resources
+        currentStamina -= skill.staminaCost;
+        currentMana -= skill.manaCost;
+
+        // Apply cooldown
+        skillCooldowns[skillId] = skill.cooldownSeconds;
+
+        // Increase proficiency
+        skill.IncreaseProficiency();
+
+        // Execute skill
+        OnSkillExecuted(skill, targetPosition);
+
         return true;
     }
 
-    /// <summary>
-    /// Process the ability queue.
-    /// </summary>
-    private void ProcessAbilityQueue()
+    private void OnSkillExecuted(Skill skill, Vector3 targetPosition)
     {
-        if (abilityQueue.Count == 0 || !string.IsNullOrEmpty(currentCastingAbility))
-            return;
+        Debug.Log($"Skill executed: {skill.skillName} at {targetPosition}");
 
-        string nextAbility = abilityQueue.Dequeue();
-        CastAbility(nextAbility);
-    }
-
-    /// <summary>
-    /// Cast an ability with casting time.
-    /// </summary>
-    private void CastAbility(string skillId)
-    {
-        if (!skills.TryGetValue(skillId, out var skill))
-            return;
-
-        currentCastingAbility = skillId;
-        castProgress = 0f;
-        Debug.Log($"🔮 Casting: {skill.SkillName}...");
-    }
-
-    /// <summary>
-    /// Update casting progress.
-    /// </summary>
-    private void UpdateCasting()
-    {
-        if (string.IsNullOrEmpty(currentCastingAbility))
-            return;
-
-        var skill = skills[currentCastingAbility];
-        float castTime = 0.5f; // Base casting time
-
-        castProgress += Time.deltaTime / castTime;
-
-        if (castProgress >= 1f)
+        // If dual wield system exists and this is a dual wield skill, register hit
+        if (dualWieldSystem != null && skill.skillId.Contains("dual"))
         {
-            ExecuteAbility(currentCastingAbility);
-            currentCastingAbility = "";
+            dualWieldSystem.RegisterHit();
+
+            // Check if final strike is ready
+            if (dualWieldSystem.CanUseFinalStrike && skill.skillId == "final_strike")
+            {
+                float finalStrikeDamage = dualWieldSystem.ExecuteFinalStrike();
+                // Apply this damage to enemies
+            }
         }
     }
 
-    /// <summary>
-    /// Execute an ability and generate threat.
-    /// </summary>
-    private void ExecuteAbility(string skillId)
+    public void TakeDamage(float damageAmount)
     {
-        if (!skills.TryGetValue(skillId, out var skill) || currentTarget == null)
-            return;
+        currentHealth -= damageAmount;
+        currentHealth = Mathf.Max(0, currentHealth);
 
-        if (skill.Use(player.CharacterClass.BaseStats, player.Level))
+        if (currentHealth <= 0)
         {
-            float damage = skill.CalculateDamage(player.CharacterClass.BaseStats, player.Level);
-            currentTarget.TakeDamage(damage, player);
-
-            // Generate threat
-            float threat = damage * 1.2f; // Abilities generate 120% threat
-            GenerateThreat(threat);
-
-            combatStats.OnAbilityUsed(skillId, damage);
-            Debug.Log($"✨ {skill.SkillName} executed! {damage:F1} damage, Threat: {threat:F1}");
+            OnDeath();
         }
     }
 
-    /// <summary>
-    /// Generate threat on current target.
-    /// </summary>
-    public void GenerateThreat(float threatAmount)
+    public void Heal(float healAmount)
     {
-        totalThreatGenerated += threatAmount;
-        if (currentTarget != null)
+        currentHealth = Mathf.Min(stats.MaxHealth, currentHealth + healAmount);
+    }
+
+    private void OnDeath()
+    {
+        Debug.Log("Player defeated!");
+    }
+
+    private void Update()
+    {
+        if (stats == null) return;
+
+        // Regenerate resources
+        if (currentStamina < stats.MaxStamina)
+            currentStamina += staminaRegenRate * Time.deltaTime;
+
+        if (currentMana < stats.MaxMana)
+            currentMana += manaRegenRate * Time.deltaTime;
+
+        // Cap resources
+        currentStamina = Mathf.Min(stats.MaxStamina, currentStamina);
+        currentMana = Mathf.Min(stats.MaxMana, currentMana);
+
+        // Update cooldowns
+        foreach (var key in new List<string>(skillCooldowns.Keys))
         {
-            Debug.Log($"⚠️ Threat: +{threatAmount:F1} (Total: {totalThreatGenerated:F1})");
+            if (skillCooldowns[key] > 0)
+                skillCooldowns[key] -= Time.deltaTime;
         }
-    }
-
-    /// <summary>
-    /// Get skill by ID.
-    /// </summary>
-    public Skill GetSkill(string skillId)
-    {
-        return skills.TryGetValue(skillId, out var skill) ? skill : null;
-    }
-
-    /// <summary>
-    /// Get combat statistics summary.
-    /// </summary>
-    public string GetCombatStats()
-    {
-        return $"State: {currentCombatState} | Threat: {totalThreatGenerated:F1} | " +
-               $"Queued: {abilityQueue.Count} | Target: {(currentTarget != null ? currentTarget.BossName : "None")}";
-    }
-}
-
-/// <summary>
-/// Combat state enumeration.
-/// </summary>
-public enum CombatState
-{
-    Idle,
-    InCombat,
-    Casting,
-    Channeling,
-    Interrupted,
-    Dead
-}
-
-/// <summary>
-/// Advanced combat statistics tracking.
-/// </summary>
-public class CombatStatistics
-{
-    private DateTime combatStartTime;
-    private DateTime combatEndTime;
-    private int abilitiesUsed = 0;
-    private float totalDamageDealt = 0f;
-    private float totalDamageTaken = 0f;
-    private int criticalHits = 0;
-    private int missedAbilities = 0;
-    private Dictionary<string, int> abilityUsageCount = new Dictionary<string, int>();
-
-    public void OnCombatStart()
-    {
-        combatStartTime = DateTime.Now;
-        ResetStats();
-    }
-
-    public void OnCombatEnd()
-    {
-        combatEndTime = DateTime.Now;
-    }
-
-    public void OnAbilityUsed(string skillId, float damage)
-    {
-        abilitiesUsed++;
-        totalDamageDealt += damage;
-
-        if (!abilityUsageCount.ContainsKey(skillId))
-            abilityUsageCount[skillId] = 0;
-        abilityUsageCount[skillId]++;
-    }
-
-    public void OnCriticalHit()
-    {
-        criticalHits++;
-    }
-
-    public void OnMiss()
-    {
-        missedAbilities++;
-    }
-
-    private void ResetStats()
-    {
-        abilitiesUsed = 0;
-        totalDamageDealt = 0f;
-        totalDamageTaken = 0f;
-        criticalHits = 0;
-        missedAbilities = 0;
-        abilityUsageCount.Clear();
-    }
-
-    public float GetDPS()
-    {
-        var duration = (combatEndTime - combatStartTime).TotalSeconds;
-        return duration > 0 ? totalDamageDealt / (float)duration : 0f;
-    }
-
-    public string GetCombatSummary()
-    {
-        return $"Combat Duration: {(combatEndTime - combatStartTime).TotalSeconds:F1}s | " +
-               $"DPS: {GetDPS():F1} | Abilities Used: {abilitiesUsed} | " +
-               $"Crits: {criticalHits} | Misses: {missedAbilities}";
     }
 }

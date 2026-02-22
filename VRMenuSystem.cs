@@ -1,42 +1,50 @@
 using UnityEngine;
+using Valve.VR;
 using System.Collections.Generic;
 
 /// <summary>
-/// Central VR UI Manager for the entire game.
-/// Handles all menus, panels, and UI state.
-/// SAO-inspired design with holographic feel.
+/// Main VR Menu System - SAO-inspired holographic interface.
+/// Handles all menu panels, interactions, and animations.
 /// </summary>
 public class VRMenuSystem : MonoBehaviour
 {
     private static VRMenuSystem instance;
 
-    [Header("Main Menus")]
-    [SerializeField] private VRMainMenuPanel mainMenuPanel;
-    [SerializeField] private VRSettingsPanel settingsMenuPanel;
-    [SerializeField] private VRPlayerHUDPanel playerHUDPanel;
-    [SerializeField] private VRInventoryPanel inventoryPanel;
-    [SerializeField] private VRCharacterPanel characterPanel;
-    [SerializeField] private VRPauseMenuPanel pauseMenuPanel;
-    [SerializeField] private SkillTreePanel skillTreePanel;
-    [SerializeField] private VRSkillsPanel skillsPanel;
-    [SerializeField] private VRMapPanel mapPanel;
-    [SerializeField] private VRPartyPanel partyPanel;
-    [SerializeField] private VRQuestLogPanel questLogPanel;
+    [Header("Menu Canvas")]
+    [SerializeField] private Canvas menuCanvas;
+    [SerializeField] private float menuSpawnDistance = 0.5f;
+    [SerializeField] private Vector3 menuSpawnOffset = Vector3.zero;
 
-    [Header("UI Settings")]
-    [SerializeField] private Color saoBlueAccent = new Color(0, 1, 1);
-    [SerializeField] private Color saoRedAccent = new Color(1, 0.2f, 0.2f);
-    [SerializeField] private Color saoGreenAccent = new Color(0, 1, 0.5f);
-    [SerializeField] private float panelTransitionSpeed = 0.3f;
+    [Header("Panel Prefabs")]
+    [SerializeField] private VRMenuPanel statusPanelPrefab;
+    [SerializeField] private VRMenuPanel inventoryPanelPrefab;
+    [SerializeField] private VRMenuPanel equipmentPanelPrefab;
+    [SerializeField] private VRMenuPanel skillsPanelPrefab;
+    [SerializeField] private VRMenuPanel mapPanelPrefab;
+    [SerializeField] private VRMenuPanel partyPanelPrefab;
+    [SerializeField] private VRMenuPanel guildPanelPrefab;
+    [SerializeField] private VRMenuPanel questLogPanelPrefab;
+    [SerializeField] private VRMenuPanel settingsPanelPrefab;
 
-    [Header("VR Settings")]
-    [SerializeField] private Transform leftControllerTransform;
-    [SerializeField] private Transform rightControllerTransform;
-    [SerializeField] private float menuDistanceFromPlayer = 2f;
+    [Header("Menu Settings")]
+    [SerializeField] private float panelFadeInDuration = 0.2f;
+    [SerializeField] private float panelScaleAnimationDuration = 0.3f;
+    [SerializeField] private Color holographicBlue = new Color(0.227f, 0.627f, 1f); // #3aa0ff
+    [SerializeField] private float holographicGlowIntensity = 1.2f;
 
-    private Canvas mainCanvas;
-    private VRMenuPanel currentPanel;
-    private bool isPaused = false;
+    [Header("VR Input")]
+    [SerializeField] private SteamVR_Input_Sources controllerHand = SteamVR_Input_Sources.RightHand;
+
+    private Dictionary<string, VRMenuPanel> openPanels = new Dictionary<string, VRMenuPanel>();
+    private VRMenuPanel mainMenuPanel;
+    private bool isMenuOpen = false;
+
+    // SteamVR Actions
+    private SteamVR_Action_Boolean menuToggleAction;
+    private SteamVR_Action_Pose poseAction;
+
+    private Camera mainCamera;
+    private Player currentPlayer;
 
     private void Awake()
     {
@@ -45,139 +53,143 @@ public class VRMenuSystem : MonoBehaviour
         else
             Destroy(gameObject);
 
-        mainCanvas = GetComponent<Canvas>();
-        InitializePanels();
+        DontDestroyOnLoad(gameObject);
+        mainCamera = Camera.main;
     }
 
     private void Start()
     {
-        PositionMenuInFrontOfPlayer();
+        InitializeSteamVRActions();
+        currentPlayer = FindObjectOfType<Player>();
+        InitializeMenuCanvas();
     }
 
     public static VRMenuSystem Instance => instance;
 
-    private void InitializePanels()
+    private void InitializeSteamVRActions()
     {
-        mainMenuPanel = GetOrCreatePanel<VRMainMenuPanel>("VRMainMenuPanel");
-        settingsMenuPanel = GetOrCreatePanel<VRSettingsPanel>("VRSettingsPanel");
-        playerHUDPanel = GetOrCreatePanel<VRPlayerHUDPanel>("VRPlayerHUDPanel");
-        inventoryPanel = GetOrCreatePanel<VRInventoryPanel>("VRInventoryPanel");
-        characterPanel = GetOrCreatePanel<VRCharacterPanel>("VRCharacterPanel");
-        pauseMenuPanel = GetOrCreatePanel<VRPauseMenuPanel>("VRPauseMenuPanel");
-        skillTreePanel = GetOrCreatePanel<SkillTreePanel>("SkillTreePanel");
-        skillsPanel = GetOrCreatePanel<VRSkillsPanel>("VRSkillsPanel");
-        mapPanel = GetOrCreatePanel<VRMapPanel>("VRMapPanel");
-        partyPanel = GetOrCreatePanel<VRPartyPanel>("VRPartyPanel");
-        questLogPanel = GetOrCreatePanel<VRQuestLogPanel>("VRQuestLogPanel");
-
-        HideAllPanels();
-        ShowPlayerHUD();
+        menuToggleAction = SteamVR_Actions.default_Grab; // Grip button
+        poseAction = SteamVR_Actions.default_Pose;
     }
 
-    private T GetOrCreatePanel<T>(string panelName) where T : VRMenuPanel
+    private void InitializeMenuCanvas()
     {
-        Transform panelTransform = transform.Find(panelName);
-        if (panelTransform != null)
+        if (menuCanvas == null)
         {
-            T panel = panelTransform.GetComponent<T>();
-            if (panel != null) return panel;
+            GameObject canvasGO = new GameObject("VRMenuCanvas");
+            canvasGO.transform.SetParent(transform);
+            menuCanvas = canvasGO.AddComponent<Canvas>();
         }
 
-        GameObject panelGO = new GameObject(panelName);
-        panelGO.transform.SetParent(transform);
-        T newPanel = panelGO.AddComponent<T>();
-        return newPanel;
-    }
-
-    private void PositionMenuInFrontOfPlayer()
-    {
-        Transform cameraTransform = Camera.main.transform;
-        Vector3 menuPosition = cameraTransform.position + cameraTransform.forward * menuDistanceFromPlayer;
-        mainCanvas.transform.position = menuPosition;
-        mainCanvas.transform.rotation = Quaternion.LookRotation(mainCanvas.transform.position - cameraTransform.position);
-    }
-
-    public void ShowMainMenu() => ShowPanel(mainMenuPanel);
-    public void ShowSettings() => ShowPanel(settingsMenuPanel);
-    public void ShowInventory() => ShowPanel(inventoryPanel);
-    public void ShowCharacter() => ShowPanel(characterPanel);
-    public void ShowSkillTree() => ShowPanel(skillTreePanel);
-    public void ShowSkills() => ShowPanel(skillsPanel);
-    public void ShowMap() => ShowPanel(mapPanel);
-    public void ShowParty() => ShowPanel(partyPanel);
-    public void ShowQuestLog() => ShowPanel(questLogPanel);
-    public void ShowPlayerHUD() => playerHUDPanel.Show();
-
-    public void ShowPauseMenu()
-    {
-        ShowPanel(pauseMenuPanel);
-        isPaused = true;
-        Time.timeScale = 0f;
-    }
-
-    public void HidePauseMenu()
-    {
-        HidePanel(pauseMenuPanel);
-        isPaused = false;
-        Time.timeScale = 1f;
-    }
-
-    public void ShowPanel(VRMenuPanel panel)
-    {
-        HideAllPanels();
-        if (panel != null)
-        {
-            panel.Show();
-            currentPanel = panel;
-            PositionMenuInFrontOfPlayer();
-        }
-    }
-
-    public void HidePanel(VRMenuPanel panel)
-    {
-        if (panel != null)
-            panel.Hide();
-    }
-
-    private void HideAllPanels()
-    {
-        if (mainMenuPanel != null) mainMenuPanel.Hide();
-        if (settingsMenuPanel != null) settingsMenuPanel.Hide();
-        if (inventoryPanel != null) inventoryPanel.Hide();
-        if (characterPanel != null) characterPanel.Hide();
-        if (pauseMenuPanel != null) pauseMenuPanel.Hide();
-        if (skillTreePanel != null) skillTreePanel.Hide();
-        if (skillsPanel != null) skillsPanel.Hide();
-        if (mapPanel != null) mapPanel.Hide();
-        if (partyPanel != null) partyPanel.Hide();
-        if (questLogPanel != null) questLogPanel.Hide();
-    }
-
-    public Color GetAccentColor(AccentType type)
-    {
-        return type switch
-        {
-            AccentType.Blue => saoBlueAccent,
-            AccentType.Red => saoRedAccent,
-            AccentType.Green => saoGreenAccent,
-            _ => saoBlueAccent
-        };
+        menuCanvas.renderMode = RenderMode.WorldSpace;
+        
+        RectTransform canvasRect = menuCanvas.GetComponent<RectTransform>();
+        canvasRect.sizeDelta = new Vector2(1920, 1080);
     }
 
     private void Update()
     {
-        if (currentPanel != null && currentPanel.isVisible)
+        // Toggle menu with grip button
+        if (SteamVR_Input.GetStateDown("GrabGrip", controllerHand))
         {
-            PositionMenuInFrontOfPlayer();
+            ToggleMenu();
+        }
+
+        // Update menu position to follow player view
+        if (isMenuOpen)
+        {
+            UpdateMenuPosition();
         }
     }
 
-    public Player GetCurrentPlayer() => FindObjectOfType<Player>();
-}
+    public void ToggleMenu()
+    {
+        if (isMenuOpen)
+            CloseMenu();
+        else
+            OpenMenu();
+    }
 
-public enum AccentType
-{
-    Blue,
-    Red,
-    Green
+    public void OpenMenu()
+    {
+        if (isMenuOpen) return;
+
+        isMenuOpen = true;
+        Time.timeScale = 0f; // Pause game
+
+        // Create or show main menu panel
+        if (mainMenuPanel == null)
+        {
+            mainMenuPanel = CreateMenuPanel("MainMenu", Vector3.zero);
+        }
+
+        mainMenuPanel.Show();
+    }
+
+    public void CloseMenu()
+    {
+        if (!isMenuOpen) return;
+
+        isMenuOpen = false;
+        Time.timeScale = 1f; // Resume game
+
+        // Close all panels
+        foreach (var panel in openPanels.Values)
+        {
+            panel.Hide();
+        }
+        openPanels.Clear();
+    }
+
+    private void UpdateMenuPosition()
+    {
+        // Position menu 0.5m in front of player
+        Vector3 menuPosition = mainCamera.transform.position + mainCamera.transform.forward * menuSpawnDistance + menuSpawnOffset;
+        menuCanvas.transform.position = menuPosition;
+        menuCanvas.transform.rotation = Quaternion.LookRotation(menuCanvas.transform.position - mainCamera.transform.position);
+    }
+
+    public VRMenuPanel CreateMenuPanel(string panelType, Vector3 offset)
+    {
+        VRMenuPanel prefab = panelType switch
+        {
+            "Status" => statusPanelPrefab,
+            "Inventory" => inventoryPanelPrefab,
+            "Equipment" => equipmentPanelPrefab,
+            "Skills" => skillsPanelPrefab,
+            "Map" => mapPanelPrefab,
+            "Party" => partyPanelPrefab,
+            "Guild" => guildPanelPrefab,
+            "QuestLog" => questLogPanelPrefab,
+            "Settings" => settingsPanelPrefab,
+            _ => null
+        };
+
+        if (prefab == null)
+        {
+            Debug.LogError($"Panel prefab not found: {panelType}");
+            return null;
+        }
+
+        VRMenuPanel panel = Instantiate(prefab, menuCanvas.transform);
+        panel.Initialize(this, panelType, offset);
+
+        if (!openPanels.ContainsKey(panelType))
+        {
+            openPanels[panelType] = panel;
+        }
+
+        return panel;
+    }
+
+    public void ClosePanel(string panelType)
+    {
+        if (openPanels.TryGetValue(panelType, out var panel))
+        {
+            panel.Hide();
+            openPanels.Remove(panelType);
+        }
+    }
+
+    public Player GetCurrentPlayer() => currentPlayer;
 }

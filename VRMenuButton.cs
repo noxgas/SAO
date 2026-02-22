@@ -12,7 +12,7 @@ public class VRMenuButton : MonoBehaviour
     [SerializeField] private TextMeshProUGUI buttonText;
 
     [SerializeField] private Color normalColor = new Color(0.05f, 0.15f, 0.35f);
-    [SerializeField] private Color hoverColor = new Color(0.227f, 0.627f, 1f);
+    [SerializeField] private Color hoverColor = new Color(0.227f, 0.627f, 1f); // #3aa0ff
     [SerializeField] private Color selectedColor = new Color(0.3f, 0.8f, 1f);
 
     private VRMainMenuPanel parentPanel;
@@ -30,27 +30,43 @@ public class VRMenuButton : MonoBehaviour
             buttonText = GetComponentInChildren<TextMeshProUGUI>();
 
         buttonText.text = optionName;
-        buttonText.color = new Color(1, 1, 1, 1);
+        buttonText.color = new Color(1, 1, 1, 1); // White text
 
+        // Add hover event listeners
         button.onClick.AddListener(OnButtonClicked);
+
+        // Setup EventTrigger for hover
+        EventTrigger trigger = GetComponent<EventTrigger>();
+        if (trigger == null)
+            trigger = gameObject.AddComponent<EventTrigger>();
+
+        AddEventTrigger(trigger, EventTriggerType.PointerEnter, OnPointerEnter);
+        AddEventTrigger(trigger, EventTriggerType.PointerExit, OnPointerExit);
     }
 
-    private void OnButtonClicked()
+    private void AddEventTrigger(EventTrigger trigger, EventTriggerType eventType, System.Action<BaseEventData> callback)
     {
-        buttonImage.color = selectedColor;
-        if (parentPanel != null)
-            parentPanel.OnMenuOptionSelected(optionName);
+        EventTrigger.Entry entry = new EventTrigger.Entry();
+        entry.eventID = eventType;
+        entry.callback.AddListener((data) => callback(data));
+        trigger.triggers.Add(entry);
     }
 
-    private void OnMouseEnter()
+    private void OnPointerEnter(BaseEventData data)
     {
         buttonImage.color = hoverColor;
         transform.localScale = Vector3.one * 1.05f;
     }
 
-    private void OnMouseExit()
+    private void OnPointerExit(BaseEventData data)
     {
         buttonImage.color = normalColor;
         transform.localScale = Vector3.one;
+    }
+
+    private void OnButtonClicked()
+    {
+        buttonImage.color = selectedColor;
+        parentPanel.OnMenuOptionSelected(optionName);
     }
 }

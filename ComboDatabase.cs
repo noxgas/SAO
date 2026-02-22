@@ -244,7 +244,7 @@ public static class ComboDatabase
     {
         Initialize();
         var combos = GetCombosForClass(className);
-
+        
         foreach (var combo in combos)
         {
             if (combo.minHits == hits)

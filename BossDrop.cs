@@ -1,42 +1,33 @@
 using UnityEngine;
 
 /// <summary>
-/// Single loot drop from a boss.
-/// Can be a weapon, armor, accessory, or consumable.
+/// Data structure for boss defeat rewards.
+/// Different from regular dungeon drops - these are exclusive to the boss killer.
 /// </summary>
+[System.Serializable]
 public class BossDrop
 {
     public string dropId;
     public string dropName;
     public string description;
+    
+    [Header("Reward Type")]
     public BossRewardType rewardType;
+    
+    [Header("Rarity & Stats")]
     public ItemRarity rarity;
-    public float statBonus;
-    public float dropChance;
-    public int experienceReward;
+    public float dropChance; // 0-1 probability
+    
+    [Header("Item Stats")]
+    public float statBonus; // Varies by type (damage, defense, etc)
     public int goldReward;
-    public bool isBoundToCharacter;
-    public bool isDualWieldCapable;
-    public string bossThatDropsIt;
-
-    public BossDrop Clone()
-    {
-        return new BossDrop
-        {
-            dropId = this.dropId,
-            dropName = this.dropName,
-            description = this.description,
-            rewardType = this.rewardType,
-            rarity = this.rarity,
-            statBonus = this.statBonus,
-            dropChance = this.dropChance,
-            experienceReward = this.experienceReward,
-            goldReward = this.goldReward,
-            isBoundToCharacter = this.isBoundToCharacter,
-            isDualWieldCapable = this.isDualWieldCapable,
-            bossThatDropsIt = this.bossThatDropsIt
-        };
-    }
+    
+    [Header("Experience")]
+    public int experienceReward;
+    
+    [Header("Special Properties")]
+    public bool isBoundToCharacter; // Can't be traded
+    public bool isDualWieldCompatible; // For dual wield weapons
 }
 
 public enum BossRewardType
@@ -44,7 +35,8 @@ public enum BossRewardType
     Weapon,
     Armor,
     Accessory,
-    Consumable,
     Gold,
-    Experience
+    Experience,
+    SkillScroll,
+    CosmeticItem
 }

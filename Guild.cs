@@ -1,33 +1,48 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections.Generic;
 
 /// <summary>
-/// Guild system for player organizations.
+/// Guild system for player grouping and benefits.
 /// </summary>
-public class Guild : MonoBehaviour
+public class Guild
 {
     public string guildName;
-    public int guildLevel = 1;
+    public Player guildLeader;
     public List<Player> members = new List<Player>();
+    
+    [System.Serializable]
+    public class GuildStats
+    {
+        public int totalBossesDefeated = 0;
+        public int totalGoldEarned = 0;
+        public long foundedTime;
+    }
+
+    public GuildStats stats = new GuildStats();
+
+    public Guild(string name)
+    {
+        guildName = name;
+        stats.foundedTime = System.DateTime.Now.Ticks;
+    }
 
     public void AddMember(Player player)
     {
         if (!members.Contains(player))
-        {
             members.Add(player);
-            Debug.Log($"✓ {player.name} joined {guildName}");
-        }
     }
 
     public void RemoveMember(Player player)
     {
-        members.Remove(player);
-        Debug.Log($"✗ {player.name} left {guildName}");
+        if (members.Contains(player))
+            members.Remove(player);
     }
 
-    public void RecordBossDefeat(int bossId)
+    public void RecordBossDefeat(int goldEarned)
     {
-        Debug.Log($"🏆 Guild {guildName} defeated a boss!");
-        guildLevel++;
+        stats.totalBossesDefeated++;
+        stats.totalGoldEarned += goldEarned;
     }
+
+    public int GetMemberCount() => members.Count;
 }

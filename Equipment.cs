@@ -1,73 +1,9 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections.Generic;
 
 /// <summary>
-/// Equipment and inventory system.
-/// Manages equipped items and inventory slots.
+/// Equipment and inventory system with rarity tiers.
 /// </summary>
-public class Equipment : MonoBehaviour
-{
-    [System.Serializable]
-    public class EquipmentItem
-    {
-        public string itemId;
-        public string itemName;
-        public string description;
-        public ItemRarity rarity;
-        public float damage;
-        public bool isDualWieldSword;
-    }
-
-    private EquipmentItem rightHandWeapon;
-    private EquipmentItem leftHandWeapon;
-    private List<EquipmentItem> inventory = new List<EquipmentItem>();
-
-    public EquipmentItem RightHandWeapon => rightHandWeapon;
-    public EquipmentItem LeftHandWeapon => leftHandWeapon;
-
-    public void EquipRightHand(EquipmentItem weapon)
-    {
-        rightHandWeapon = weapon;
-        inventory.Remove(weapon);
-        Debug.Log($"⚔️ Equipped {weapon.itemName} to RIGHT hand");
-    }
-
-    public bool EquipLeftHand(EquipmentItem weapon)
-    {
-        if (!weapon.isDualWieldSword)
-        {
-            Debug.LogWarning($"❌ {weapon.itemName} is not a dual wield sword!");
-            return false;
-        }
-
-        leftHandWeapon = weapon;
-        inventory.Remove(weapon);
-
-        Debug.Log($"✨ Equipped {weapon.itemName} to LEFT hand");
-        Debug.Log($"🎉 DUAL WIELD ACTIVATED!");
-
-        return true;
-    }
-
-    public void UnequipLeftHand()
-    {
-        if (leftHandWeapon != null)
-        {
-            inventory.Add(leftHandWeapon);
-            Debug.Log($"Unequipped {leftHandWeapon.itemName}");
-            leftHandWeapon = null;
-        }
-    }
-
-    public void AddItemToInventory(EquipmentItem item)
-    {
-        inventory.Add(item);
-        Debug.Log($"✓ Added {item.itemName} to inventory");
-    }
-
-    public List<EquipmentItem> GetInventory() => inventory;
-}
-
 public enum ItemRarity
 {
     Common,
@@ -75,4 +11,42 @@ public enum ItemRarity
     Rare,
     Epic,
     Legendary
+}
+
+[System.Serializable]
+public class Equipment : MonoBehaviour
+{
+    [System.Serializable]
+    public class EquipmentItem
+    {
+        public string itemId;
+        public string itemName;
+        public ItemRarity rarity;
+        public Dictionary<string, float> statBonuses = new Dictionary<string, float>();
+    }
+
+    private Dictionary<string, EquipmentItem> equippedItems = new Dictionary<string, EquipmentItem>();
+    private List<EquipmentItem> inventory = new List<EquipmentItem>();
+
+    public void EquipItem(EquipmentItem item, string slot)
+    {
+        if (equippedItems.ContainsKey(slot))
+        {
+            inventory.Add(equippedItems[slot]);
+        }
+
+        equippedItems[slot] = item;
+        inventory.Remove(item);
+        Debug.Log($"Equipped {item.itemName} to {slot}");
+    }
+
+    public EquipmentItem GetEquippedItem(string slot)
+    {
+        return equippedItems.ContainsKey(slot) ? equippedItems[slot] : null;
+    }
+
+    public void AddItemToInventory(EquipmentItem item)
+    {
+        inventory.Add(item);
+    }
 }

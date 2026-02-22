@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using System.Collections.Generic;
@@ -24,9 +24,6 @@ public class VRQuestLogPanel : VRMenuPanel
     [SerializeField] private TextMeshProUGUI rewardsText;
     [SerializeField] private TextMeshProUGUI hintText;
 
-    [Header("Title")]
-    [SerializeField] private TextMeshProUGUI titleText;
-
     protected override void Awake()
     {
         base.Awake();
@@ -43,11 +40,5 @@ public class VRQuestLogPanel : VRMenuPanel
     private void RefreshQuestLog()
     {
         // TODO: Load quests
-    }
-
-    private void Start()
-    {
-        titleText.text = "📜 QUEST LOG 📜";
-        titleText.color = VRMenuSystem.Instance.GetAccentColor(AccentType.Blue);
     }
 }
