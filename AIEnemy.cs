@@ -5,6 +5,7 @@ public enum EnemyState
     Idle,
     Patrol,
     Alerted,
+    Chase,
     Combat,
     Dead
 }
@@ -45,6 +46,8 @@ public class AIEnemy : MonoBehaviour
 
         if (targetPlayer == null)
             currentState = EnemyState.Patrol;
+        else if (currentState == EnemyState.Alerted)
+            currentState = EnemyState.Chase;
     }
 
     private bool HasLineOfSight(Transform target)
