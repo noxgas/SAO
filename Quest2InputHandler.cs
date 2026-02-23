@@ -264,11 +264,18 @@ public class Quest2InputHandler : MonoBehaviour
         if (yDown && !yButtonHeld)
         {
             yButtonHeld = true;
-            VRMenuSystem menuSys = VRMenuSystem.Instance;
-            if (menuSys != null)
-                menuSys.ToggleMenu();
+            // Try the new SAO menu controller first, fall back to VRMenuSystem
+            SAOMenuController saoMenu = SAOMenuController.Instance;
+            if (saoMenu != null)
+                saoMenu.ToggleMenu();
             else
-                Debug.Log("[Quest2] Y button – menu toggle (no VRMenuSystem found).");
+            {
+                VRMenuSystem menuSys = VRMenuSystem.Instance;
+                if (menuSys != null)
+                    menuSys.ToggleMenu();
+                else
+                    Debug.Log("[Quest2] Y button – no menu controller found.");
+            }
         }
         else if (!yDown) yButtonHeld = false;
     }

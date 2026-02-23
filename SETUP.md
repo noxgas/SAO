@@ -16,6 +16,8 @@
 | World-space health/stamina display | ✅ | `VRHealthDisplay.cs` |
 | Desktop test mode (WASD + mouse, no headset) | ✅ | `VRPrototypeTestMode.cs` |
 | Quest 2 controller mapping (grip/trigger/buttons) | ✅ | `Quest2InputHandler.cs` |
+| SAO-style HUD (HP/SP/XP bars, name, level) | ✅ | `SAOHUDController.cs` |
+| SAO-style main menu (vertical list + sub-panels) | ✅ | `SAOMenuController.cs` |
 
 ---
 
@@ -34,6 +36,8 @@ Unity **2021.3 LTS** or newer (2022.3 LTS recommended).
    - `CharacterController` (height 1.8, radius 0.3)
    - `VRMovementSystem` — tick **Desktop Test Mode** ✅
    - `VRPrototypeTestMode`
+   - `SAOHUDController` — SAO-style HP/SP/XP bars appear automatically bottom-left
+   - `SAOMenuController` — SAO holographic menu, press **M** to open
 3. Add a child Camera to the Player (name it `Head Camera`).
 4. Add a **Sword** GameObject anywhere in the scene:
    - `Rigidbody` (Is Kinematic = false)
@@ -56,6 +60,7 @@ Unity **2021.3 LTS** or newer (2022.3 LTS recommended).
 |---|---|
 | WASD / Arrow keys | Move |
 | Mouse | Look left/right |
+| **M** | Open / close SAO holographic menu |
 | **E** | Grab / release nearest sword |
 | **Left Mouse Button** (held) | Swing sword (activates hit detection) |
 | **R** | Despawn all enemies (they respawn) |

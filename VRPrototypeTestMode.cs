@@ -237,7 +237,7 @@ public class VRPrototypeTestMode : MonoBehaviour
         y += 4f;
         GUI.Label(new Rect(x + 4f, y, w, lineH), "── Desktop ──", labelStyle); y += lineH;
         GUI.Label(new Rect(x + 4f, y, w, lineH), "WASD/Arrows=move  Mouse=look  LMB=swing", labelStyle); y += lineH;
-        GUI.Label(new Rect(x + 4f, y, w, lineH), "E=grab  R=respawn  Tab=overlay  Esc=cursor", labelStyle); y += lineH;
+        GUI.Label(new Rect(x + 4f, y, w, lineH), "E=grab  R=respawn  M=menu  Tab=overlay  Esc=cursor", labelStyle); y += lineH;
         GUI.Label(new Rect(x + 4f, y, w, lineH), "── Quest 2 ──", labelStyle); y += lineH;
         GUI.Label(new Rect(x + 4f, y, w, lineH), "R.Grip=grab  L.Grip=grab/2H  R.Trig=slash", labelStyle); y += lineH;
         GUI.Label(new Rect(x + 4f, y, w, lineH), "L.Trig=block  A=overlay  B=respawn  Y=menu", labelStyle);
