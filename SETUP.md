@@ -81,7 +81,8 @@ Unity **2021.3 LTS** or newer (2022.3 LTS recommended).
 - Assign an **XR Rig** (from XR Interaction Toolkit) as the Player root.
 - Assign **Left/Right Controller** transforms to `VRMovementSystem`.
 - Add `Quest2InputHandler` to the XR Rig root.
-- Assign `rightHandSword`, `leftHandSword`, and hand transforms in the Inspector.
+- Assign `rightHandSword`, `leftHandSword`, `leftHandTransform`, `rightHandTransform` in the Inspector (or leave blank – auto-found).
+- `headCameraTransform` is auto-found from `Camera.main`.
 
 ### 3. Quest 2 controls
 
@@ -90,12 +91,23 @@ Unity **2021.3 LTS** or newer (2022.3 LTS recommended).
 | Right Grip (squeeze) | Grab sword – right hand |
 | Left Grip (squeeze) | Grab sword – left hand / two-handed mode |
 | Right Trigger | Basic slash skill |
-| Left Trigger | Block |
+| Left Trigger *(held)* | Part of menu gesture (see below) |
 | **A** button | Toggle debug overlay |
-| **B** button | Respawn enemies |
-| **Y** button | Open holographic menu |
+| **B** button | Despawn all enemies (test reset) |
 | Left Thumbstick ←/→ | Snap turn (45°) |
 | Arm swing | Locomotion (harder swing = faster movement) |
+
+### 4. Opening the SAO menu on Quest 2 (gesture)
+
+> **The menu no longer opens with a button press.** Instead, use the authentic SAO wrist-swipe gesture:
+
+1. **Hold your left hand extended in front of you** (pointing forward relative to where you're looking).
+2. **Squeeze the left trigger** (≥ 50 %).
+3. **Flick / swipe your wrist downward** in one quick motion (downward speed ≥ 1.5 m/s).
+
+The holographic menu will materialise in front of you. Repeat the gesture to close it.
+
+> **Tuning** (if the gesture feels too sensitive or not sensitive enough): adjust `Menu Swipe Velocity Threshold`, `Menu Hand Forward Dot`, and `Menu Gesture Cooldown` on the `Quest2InputHandler` component in the Inspector.
 
 ---
 
