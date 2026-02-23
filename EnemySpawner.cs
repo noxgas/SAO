@@ -11,6 +11,8 @@ public class EnemySpawner : MonoBehaviour
     [Header("References")]
     [SerializeField] private GameObject enemyPrefab;
     [SerializeField] private Transform playerTransform;
+    [Tooltip("Optional: assign to use the noise-based terrain height as a fallback when raycasting misses.")]
+    [SerializeField] private ProceduralMapGenerator mapGenerator;
 
     [Header("Spawn Settings")]
     [SerializeField] private int maxEnemies = 10;
@@ -28,6 +30,9 @@ public class EnemySpawner : MonoBehaviour
     {
         if (playerTransform == null && Camera.main != null)
             playerTransform = Camera.main.transform;
+
+        if (mapGenerator == null)
+            mapGenerator = FindObjectOfType<ProceduralMapGenerator>();
 
         // Seed initial enemies
         StartCoroutine(InitialSpawn());
@@ -83,10 +88,13 @@ public class EnemySpawner : MonoBehaviour
             }
         }
 
-        // Fallback: flat world
+        // Fallback: use the ProceduralMapGenerator's noise height so enemies land on terrain
         float a = Random.Range(0f, 360f) * Mathf.Deg2Rad;
         float d = Random.Range(minSpawnDistance, maxSpawnDistance);
-        position = playerTransform.position + new Vector3(Mathf.Cos(a) * d, 0f, Mathf.Sin(a) * d);
+        Vector3 fallbackPos = playerTransform.position + new Vector3(Mathf.Cos(a) * d, 0f, Mathf.Sin(a) * d);
+        if (mapGenerator != null)
+            fallbackPos.y = mapGenerator.GetTerrainHeight(fallbackPos.x, fallbackPos.z);
+        position = fallbackPos;
         return true;
     }
 

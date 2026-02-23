@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 
 /// <summary>
@@ -7,6 +8,10 @@ using System.Collections.Generic;
 /// and plains using layered Perlin noise.  Trees and rocks are scattered across
 /// the surface as stand-in resource objects.  The terrain is chunked for Quest 2
 /// performance: only chunks near the player are kept in memory.
+///
+/// The map is centred on world origin so a player starting at (0,0,0) is in the
+/// middle of the playable area.  On Start the player (or camera) is automatically
+/// repositioned on top of the terrain surface.
 /// </summary>
 public class ProceduralMapGenerator : MonoBehaviour
 {
@@ -37,17 +42,22 @@ public class ProceduralMapGenerator : MonoBehaviour
 
     [Header("Player Reference")]
     [SerializeField] private Transform playerTransform;
+    [Tooltip("Height above the terrain surface to place the player at spawn (metres).")]
+    [SerializeField] private float playerSpawnHeightOffset = 1.0f;
 
     // Runtime
     private Dictionary<Vector2Int, GameObject> loadedChunks = new Dictionary<Vector2Int, GameObject>();
     private int seed;
     private Material plainsMaterial;
     private Material forestMaterial;
+    // Half-width of the map in world units, used to centre the terrain around origin
+    private float mapHalfSize;
 
     private void Start()
     {
         seed = Random.Range(0, 100000);
         noiseOffset = new Vector2(seed * 0.1f, seed * 0.1f);
+        mapHalfSize = mapSizeMeters * 0.5f;
 
         // Pre-build shared biome materials (one allocation per biome)
         plainsMaterial = new Material(Shader.Find("Standard"));
@@ -58,12 +68,28 @@ public class ProceduralMapGenerator : MonoBehaviour
         if (playerTransform == null && Camera.main != null)
             playerTransform = Camera.main.transform;
 
+        // Generate the first batch of chunks synchronously so terrain exists immediately
         UpdateChunks();
+
+        // Place the player on top of the terrain surface
+        if (playerTransform != null)
+            StartCoroutine(SnapPlayerToTerrainNextFrame());
     }
 
     private void Update()
     {
         UpdateChunks();
+    }
+
+    // ── Public terrain height API ────────────────────────────────────────────
+
+    /// <summary>
+    /// Returns the terrain surface Y at the given world (X, Z) position.
+    /// Useful for placing enemies, resources, and the player.
+    /// </summary>
+    public float GetTerrainHeight(float worldX, float worldZ)
+    {
+        return SampleHeight(worldX, worldZ);
     }
 
     // ── Chunk management ────────────────────────────────────────────────────
@@ -103,10 +129,18 @@ public class ProceduralMapGenerator : MonoBehaviour
             loadedChunks.Remove(key);
     }
 
+    /// <summary>
+    /// Convert a world position to a chunk grid coordinate.
+    /// The map is centred on world origin, so chunk (0,0) spans
+    /// (-chunkWorldSize/2, -chunkWorldSize/2) to (chunkWorldSize/2, chunkWorldSize/2).
+    /// </summary>
     private Vector2Int WorldToChunk(Vector3 worldPos)
     {
-        int cx = Mathf.FloorToInt(worldPos.x / chunkWorldSize);
-        int cz = Mathf.FloorToInt(worldPos.z / chunkWorldSize);
+        // Shift the world position so (0,0,0) maps to the centre of the chunk grid
+        float shiftedX = worldPos.x + mapHalfSize;
+        float shiftedZ = worldPos.z + mapHalfSize;
+        int cx = Mathf.FloorToInt(shiftedX / chunkWorldSize);
+        int cz = Mathf.FloorToInt(shiftedZ / chunkWorldSize);
         return new Vector2Int(cx, cz);
     }
 
@@ -117,16 +151,48 @@ public class ProceduralMapGenerator : MonoBehaviour
                coord.y >= 0 && coord.y < totalChunks;
     }
 
+    // ── Player snap-to-terrain ───────────────────────────────────────────────
+
+    /// <summary>
+    /// Waits one frame (so the MeshCollider is built) then places the player
+    /// on the terrain surface using a downward raycast with a Perlin-noise fallback.
+    /// </summary>
+    private IEnumerator SnapPlayerToTerrainNextFrame()
+    {
+        // Wait for two frames: one for Start() ordering, one for FixedUpdate
+        // so MeshColliders are fully registered in the physics scene.
+        yield return null;
+        yield return new WaitForFixedUpdate();
+
+        Vector3 pos = playerTransform.position;
+
+        // Try a physics raycast first (accurate, accounts for actual collider)
+        Vector3 rayOrigin = new Vector3(pos.x, 500f, pos.z);
+        if (Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hit, 1000f))
+        {
+            pos.y = hit.point.y + playerSpawnHeightOffset;
+        }
+        else
+        {
+            // Fallback: use the noise formula directly
+            pos.y = SampleHeight(pos.x, pos.z) + playerSpawnHeightOffset;
+        }
+
+        playerTransform.position = pos;
+        Debug.Log($"[ProceduralMapGenerator] Player snapped to terrain at y={pos.y:F1}");
+    }
+
     // ── Chunk generation ────────────────────────────────────────────────────
 
     private GameObject GenerateChunk(Vector2Int chunkCoord)
     {
         GameObject chunkGO = new GameObject($"Chunk_{chunkCoord.x}_{chunkCoord.y}");
         chunkGO.transform.SetParent(transform);
-        chunkGO.transform.position = new Vector3(
-            chunkCoord.x * chunkWorldSize,
-            0f,
-            chunkCoord.y * chunkWorldSize);
+
+        // World position of the chunk's (0,0) corner, accounting for centred map
+        float worldX = chunkCoord.x * chunkWorldSize - mapHalfSize;
+        float worldZ = chunkCoord.y * chunkWorldSize - mapHalfSize;
+        chunkGO.transform.position = new Vector3(worldX, 0f, worldZ);
 
         // Build mesh
         Mesh mesh = BuildTerrainMesh(chunkCoord);
@@ -155,8 +221,9 @@ public class ProceduralMapGenerator : MonoBehaviour
         Vector2[] uvs       = new Vector2[vCount * vCount];
         int[]     triangles = new int[(vCount - 1) * (vCount - 1) * 6];
 
-        float worldOffsetX = chunkCoord.x * chunkWorldSize;
-        float worldOffsetZ = chunkCoord.y * chunkWorldSize;
+        // World X/Z of the chunk's (0,0) corner
+        float worldOffsetX = chunkCoord.x * chunkWorldSize - mapHalfSize;
+        float worldOffsetZ = chunkCoord.y * chunkWorldSize - mapHalfSize;
 
         for (int z = 0; z < vCount; z++)
         {

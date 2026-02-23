@@ -30,7 +30,7 @@ Unity **2021.3 LTS** or newer (2022.3 LTS recommended).
 
 ### 3. Scene setup
 1. Create a new Scene.
-2. Add an empty **Player** GameObject at the origin. Add these components:
+2. Add an empty **Player** GameObject at the origin `(0, 0, 0)`. Add these components:
    - `CharacterController` (height 1.8, radius 0.3)
    - `VRMovementSystem` — tick **Desktop Test Mode** ✅
    - `VRPrototypeTestMode`
@@ -44,9 +44,11 @@ Unity **2021.3 LTS** or newer (2022.3 LTS recommended).
    - Assign a simple capsule prefab (with `AIEnemy` component) as the **Enemy Prefab**
 6. Add a **ProceduralMapGenerator** GameObject:
    - `ProceduralMapGenerator` component
-   - Player Reference → your Player GameObject
+   - **Player Reference** → your Player GameObject (or leave blank — it auto-finds `Camera.main`)
    - Leave tree/rock prefabs blank for the first test (terrain still generates)
-7. Hit **Play**. The on-screen HUD appears automatically.
+7. Hit **Play**.
+   - The map generates around world origin. Your player starts at `(0, 0, 0)` and is **automatically repositioned on top of the terrain surface** by the map generator on its first frame.
+   - The on-screen HUD appears automatically.
 
 ### 4. Desktop controls
 
