@@ -1,3 +1,4 @@
+#if STEAMVR_PRESENT
 using UnityEngine;
 using Valve.VR;
 
@@ -200,3 +201,4 @@ public enum AccentType
     Red,
     Green
 }
+#endif // STEAMVR_PRESENT
