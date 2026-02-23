@@ -1,3 +1,4 @@
+#if STEAMVR_PRESENT
 using UnityEngine;
 using Valve.VR;
 using System.Collections.Generic;
@@ -193,3 +194,4 @@ public class VRMenuSystem : MonoBehaviour
 
     public Player GetCurrentPlayer() => currentPlayer;
 }
+#endif // STEAMVR_PRESENT

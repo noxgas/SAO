@@ -1,3 +1,4 @@
+#if STEAMVR_PRESENT
 using UnityEngine;
 using Valve.VR;
 
@@ -34,3 +35,4 @@ public class VRInputManager : MonoBehaviour
         }
     }
 }
+#endif // STEAMVR_PRESENT

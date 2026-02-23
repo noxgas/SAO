@@ -1,3 +1,4 @@
+#if STEAMVR_PRESENT
 using UnityEngine;
 using System.Collections.Generic;
 using Valve.VR;
@@ -407,3 +408,4 @@ public class ComboSystem : MonoBehaviour
         return GetFloorScaledDamage(baseMinDamage);
     }
 }
+#endif // STEAMVR_PRESENT

@@ -1,3 +1,4 @@
+#if STEAMVR_PRESENT
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -162,3 +163,4 @@ public class VRSettingsMenuPanel : VRUIPanel
         SetupUI();
     }
 }
+#endif // STEAMVR_PRESENT

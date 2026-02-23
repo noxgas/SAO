@@ -1,3 +1,4 @@
+#if STEAMVR_PRESENT
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -73,3 +74,4 @@ public class VRSlider : MonoBehaviour
 
     public float GetValue() => currentValue;
 }
+#endif // STEAMVR_PRESENT
