@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sword Art Online: Aincrad</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+
+    <!-- ═══ TITLE SCREEN ═══ -->
+    <div id="screen-title" class="screen">
+        <div class="title-wrapper">
+            <div class="sao-logo">
+                <span class="logo-sao">SAO</span>
+                <span class="logo-full">SWORD ART ONLINE</span>
+                <span class="logo-sub">Aincrad</span>
+            </div>
+            <p class="title-tagline">100 Floors. One Life. No Escape.</p>
+            <button id="btn-start" class="btn btn-primary pulse">ENTER GAME</button>
+        </div>
+    </div>
+
+    <!-- ═══ CHARACTER CREATE SCREEN ═══ -->
+    <div id="screen-create" class="screen">
+        <div class="create-wrapper">
+            <h2 class="screen-heading">Character Creation</h2>
+            <div class="form-group">
+                <label>Player Name</label>
+                <input type="text" id="player-name" class="input-field" placeholder="Enter your name..." maxlength="20">
+            </div>
+            <div class="form-group">
+                <label>Choose Your Class</label>
+                <div class="class-grid">
+                    <div class="class-card" data-class="swordsman">
+                        <div class="class-icon">⚔️</div>
+                        <div class="class-name">Swordsman</div>
+                        <div class="class-desc">Balanced attacker with powerful sword skills. High STR and AGI.</div>
+                        <div class="class-stats">STR ●●●●○ | VIT ●●●○○ | AGI ●●●●○</div>
+                    </div>
+                    <div class="class-card" data-class="knight">
+                        <div class="class-icon">🛡️</div>
+                        <div class="class-name">Knight</div>
+                        <div class="class-desc">Defensive warrior with very high HP and defense. Steady and resilient.</div>
+                        <div class="class-stats">STR ●●●○○ | VIT ●●●●● | AGI ●●○○○</div>
+                    </div>
+                    <div class="class-card" data-class="berserker">
+                        <div class="class-icon">🗡️</div>
+                        <div class="class-name">Berserker</div>
+                        <div class="class-desc">Glass cannon. Extreme damage output but very low defense.</div>
+                        <div class="class-stats">STR ●●●●● | VIT ●●○○○ | AGI ●●●○○</div>
+                    </div>
+                </div>
+            </div>
+            <button id="btn-create" class="btn btn-primary" disabled>BEGIN ADVENTURE</button>
+        </div>
+    </div>
+
+    <!-- ═══ MAIN GAME SCREEN ═══ -->
+    <div id="screen-main" class="screen">
+
+        <!-- HUD Header -->
+        <div class="game-header">
+            <div class="header-left">
+                <span class="header-title">SAO</span>
+                <span class="header-floor">Floor <span id="hud-floor">1</span>/100</span>
+            </div>
+            <div class="header-center">
+                <div class="hud-bar">
+                    <span class="bar-label">HP</span>
+                    <div class="bar-outer"><div id="hud-hp-bar" class="bar-inner hp-bar" style="width:100%"></div></div>
+                    <span id="hud-hp-text" class="bar-text">100/100</span>
+                </div>
+                <div class="hud-bar">
+                    <span class="bar-label">SP</span>
+                    <div class="bar-outer"><div id="hud-sp-bar" class="bar-inner sp-bar" style="width:100%"></div></div>
+                    <span id="hud-sp-text" class="bar-text">20/20</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <span id="hud-name" class="hud-name">Player</span>
+                <span id="hud-level" class="hud-level">Lv.1</span>
+                <span id="hud-col" class="hud-col">0 Col</span>
+            </div>
+        </div>
+
+        <!-- Swappable Panels -->
+        <div class="game-content">
+
+            <!-- Town Panel -->
+            <div id="panel-town" class="panel">
+                <div class="panel-art town-art">
+                    <div class="town-scene">
+                        <div class="town-name" id="town-name">Town of Beginnings</div>
+                        <div class="town-zone" id="town-zone">Plains of Beginning — Floor 1</div>
+                        <div class="town-desc" id="town-desc">A safe zone where players rest and prepare. The teleport gate glows in the distance.</div>
+                        <div class="safe-zone-badge">🔒 SAFE ZONE</div>
+                    </div>
+                </div>
+                <div class="panel-actions">
+                    <button class="btn btn-action" id="btn-shop">🏪 Item Shop</button>
+                    <button class="btn btn-action" id="btn-rest">💊 Rest (30 Col)</button>
+                    <button class="btn btn-action" id="btn-dungeon">⚔️ Enter Dungeon</button>
+                    <button class="btn btn-action" id="btn-status">📊 Status</button>
+                </div>
+            </div>
+
+            <!-- Dungeon Panel -->
+            <div id="panel-dungeon" class="panel hidden">
+                <div class="panel-art dungeon-art">
+                    <div class="dungeon-scene">
+                        <div class="dungeon-floor" id="dungeon-floor">Floor 1 — Dungeon</div>
+                        <div class="dungeon-zone" id="dungeon-zone">Plains of Beginning</div>
+                        <div class="dungeon-desc" id="dungeon-desc">Monsters lurk around every corner. Explore to find the boss chamber.</div>
+                        <div class="danger-badge">⚠️ DANGER ZONE</div>
+                    </div>
+                </div>
+                <div class="explore-progress">
+                    <div class="progress-label">Floor Progress: <span id="progress-text">0%</span></div>
+                    <div class="progress-outer"><div id="progress-bar" class="progress-inner" style="width:0%"></div></div>
+                </div>
+                <div class="panel-actions">
+                    <button class="btn btn-action" id="btn-explore">🔍 Explore</button>
+                    <button class="btn btn-action btn-boss" id="btn-boss" disabled>💀 Challenge Boss</button>
+                    <button class="btn btn-action" id="btn-back-town">🏠 Return to Town</button>
+                </div>
+            </div>
+
+            <!-- Combat Panel -->
+            <div id="panel-combat" class="panel hidden">
+                <div class="combat-area">
+                    <div class="enemy-area">
+                        <div class="enemy-name" id="enemy-name">Frenzy Boar</div>
+                        <div class="enemy-type-badge" id="enemy-type-badge">MONSTER</div>
+                        <div class="enemy-sprite" id="enemy-sprite">🐗</div>
+                        <div class="enemy-status-row" id="enemy-status-row"></div>
+                        <div class="enemy-hp-container">
+                            <div class="enemy-hp-bar-outer">
+                                <div id="enemy-hp-bar" class="enemy-hp-bar-inner" style="width:100%"></div>
+                            </div>
+                            <span id="enemy-hp-text" class="enemy-hp-text">50/50</span>
+                        </div>
+                    </div>
+                    <div class="battle-log-container">
+                        <div id="battle-log" class="battle-log"></div>
+                    </div>
+                    <div class="player-combat-hud">
+                        <div class="combat-bars">
+                            <div class="combat-bar-row">
+                                <span>HP</span>
+                                <div class="bar-outer"><div id="combat-hp-bar" class="bar-inner hp-bar" style="width:100%"></div></div>
+                                <span id="combat-hp-text">100/100</span>
+                            </div>
+                            <div class="combat-bar-row">
+                                <span>SP</span>
+                                <div class="bar-outer"><div id="combat-sp-bar" class="bar-inner sp-bar" style="width:100%"></div></div>
+                                <span id="combat-sp-text">20/20</span>
+                            </div>
+                        </div>
+                        <div id="player-status-row" class="player-status-row"></div>
+                    </div>
+                </div>
+
+                <!-- Main Combat Actions -->
+                <div id="combat-actions" class="combat-actions">
+                    <button class="btn btn-combat" id="btn-attack">⚔️ Attack</button>
+                    <button class="btn btn-combat btn-skill" id="btn-skills">✨ Sword Skills</button>
+                    <button class="btn btn-combat btn-item" id="btn-item">🎒 Items</button>
+                    <button class="btn btn-combat btn-flee" id="btn-flee">💨 Flee</button>
+                </div>
+
+                <!-- Skill Sub-menu -->
+                <div id="skill-menu" class="sub-menu hidden">
+                    <div class="sub-menu-title">— Sword Skills —</div>
+                    <div id="skill-list" class="sub-menu-list"></div>
+                    <button class="btn btn-small" id="btn-back-skills">← Back</button>
+                </div>
+
+                <!-- Item Sub-menu -->
+                <div id="item-menu" class="sub-menu hidden">
+                    <div class="sub-menu-title">— Items —</div>
+                    <div id="combat-item-list" class="sub-menu-list"></div>
+                    <button class="btn btn-small" id="btn-back-items">← Back</button>
+                </div>
+            </div>
+
+            <!-- Shop Panel -->
+            <div id="panel-shop" class="panel hidden">
+                <div class="shop-header">
+                    <h3>🏪 Item Shop</h3>
+                    <span id="shop-col-display">0 Col</span>
+                </div>
+                <div class="shop-tabs">
+                    <button class="shop-tab active" data-tab="weapons">Weapons</button>
+                    <button class="shop-tab" data-tab="armors">Armor</button>
+                    <button class="shop-tab" data-tab="items">Items</button>
+                </div>
+                <div id="shop-items" class="shop-items"></div>
+                <button class="btn btn-back-panel" id="btn-back-shop">← Back to Town</button>
+            </div>
+
+            <!-- Status Panel -->
+            <div id="panel-status" class="panel hidden">
+                <div class="shop-header">
+                    <h3>📊 Player Status</h3>
+                </div>
+                <div class="status-content">
+                    <div class="status-block">
+                        <div class="status-row"><span>Name</span><span id="stat-name">—</span></div>
+                        <div class="status-row"><span>Class</span><span id="stat-class">—</span></div>
+                        <div class="status-row"><span>Level</span><span id="stat-level">—</span></div>
+                        <div class="status-row"><span>EXP</span><span id="stat-exp">—</span></div>
+                        <div class="status-row"><span>HP</span><span id="stat-hp">—</span></div>
+                        <div class="status-row"><span>SP</span><span id="stat-sp">—</span></div>
+                        <div class="status-row"><span>ATK</span><span id="stat-atk">—</span></div>
+                        <div class="status-row"><span>DEF</span><span id="stat-def">—</span></div>
+                        <div class="status-row"><span>AGI</span><span id="stat-agi">—</span></div>
+                        <div class="status-row"><span>Col</span><span id="stat-col">—</span></div>
+                    </div>
+                    <div class="status-block">
+                        <div class="block-title">Equipment</div>
+                        <div class="status-row"><span>Weapon</span><span id="equip-weapon">None</span></div>
+                        <div class="status-row"><span>Armor</span><span id="equip-armor">None</span></div>
+                        <div class="block-title" style="margin-top:12px">Inventory</div>
+                        <div id="inventory-list" class="inventory-list"></div>
+                    </div>
+                </div>
+                <button class="btn btn-back-panel" id="btn-back-status">← Back to Town</button>
+            </div>
+
+        </div><!-- /game-content -->
+    </div><!-- /screen-main -->
+
+    <!-- ═══ REWARD SCREEN ═══ -->
+    <div id="screen-reward" class="screen">
+        <div class="overlay-wrapper">
+            <h2 class="overlay-title gold-title">⚔️ VICTORY!</h2>
+            <div id="reward-content" class="reward-content"></div>
+            <button id="btn-reward-continue" class="btn btn-primary">Continue</button>
+        </div>
+    </div>
+
+    <!-- ═══ LEVEL UP SCREEN ═══ -->
+    <div id="screen-levelup" class="screen">
+        <div class="overlay-wrapper">
+            <div class="levelup-title">LEVEL UP!</div>
+            <div id="levelup-content" class="levelup-content"></div>
+            <button id="btn-levelup-continue" class="btn btn-primary">Continue</button>
+        </div>
+    </div>
+
+    <!-- ═══ FLOOR CLEAR SCREEN ═══ -->
+    <div id="screen-floor-clear" class="screen">
+        <div class="overlay-wrapper">
+            <h2 class="overlay-title cyan-title">✦ FLOOR CLEARED! ✦</h2>
+            <div id="floor-clear-content" class="reward-content"></div>
+            <button id="btn-floor-continue" class="btn btn-primary">Advance to Next Floor →</button>
+        </div>
+    </div>
+
+    <!-- ═══ GAME OVER SCREEN ═══ -->
+    <div id="screen-gameover" class="screen">
+        <div class="gameover-wrapper">
+            <div class="gameover-title">YOU HAVE DIED</div>
+            <div class="gameover-subtitle">In Sword Art Online, death is permanent.</div>
+            <div id="gameover-stats" class="gameover-stats"></div>
+            <button id="btn-restart" class="btn btn-primary">Play Again</button>
+        </div>
+    </div>
+
+    <!-- ═══ VICTORY SCREEN ═══ -->
+    <div id="screen-victory" class="screen">
+        <div class="victory-wrapper">
+            <div class="victory-title">AINCRAD CLEARED!</div>
+            <div class="victory-subtitle">ALL 100 FLOORS CONQUERED</div>
+            <p class="victory-text">You have defeated the final boss and freed all players trapped inside Sword Art Online. The nightmare is over.</p>
+            <div id="victory-stats" class="gameover-stats"></div>
+            <button id="btn-play-again" class="btn btn-primary">Play Again</button>
+        </div>
+    </div>
+
+</div><!-- /app -->
+
+<script src="js/data.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
